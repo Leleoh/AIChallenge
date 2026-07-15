@@ -14,11 +14,11 @@ Aqui está o detalhamento de como construiremos a arquitetura definida na Especi
   - [x] Implementar o `VNDetectHumanHandPoseRequest`.
   - [x] Escrever a **Heurística de Gestos**: calcular a distância entre os dedos e o punho para determinar se a mão está Aberta (OpenHand) ou Fechada (Fist).
 
-- [ ] **Etapa 3: Lógica do Jogo (GameViewModel)**
-  - [ ] Criar a `GameViewModel` com `@Observable`.
-  - [ ] Conectar o callback do `VisionService` à ViewModel.
-  - [ ] Implementar loop de tempo para gerar balões na tela (`spawnBalloon`).
-  - [ ] Implementar `processGesture(_ gesture: HandGesture)` para estourar o balão correto caso o usuário acerte o gesto.
+- [x] **Etapa 3: Lógica do Jogo (GameViewModel)**
+  - [x] Criar a `GameViewModel` com `@Observable`.
+  - [x] Conectar o callback do `VisionService` à ViewModel.
+  - [x] Implementar loop de tempo para gerar balões na tela (`spawnBalloon`).
+  - [x] Implementar `processGesture(_ gesture: HandGesture)` para estourar o balão correto caso o usuário acerte o gesto.
 
 - [ ] **Etapa 4: Interface do Usuário (Views)**
   - [ ] Criar componente auxiliar `CameraPreview` (ponte entre `AVCaptureVideoPreviewLayer` e SwiftUI via `NSViewRepresentable`).
