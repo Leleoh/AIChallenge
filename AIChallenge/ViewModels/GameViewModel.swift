@@ -7,9 +7,10 @@ class GameViewModel {
     var session: GameSession
     var currentGesture: HandGesture = .unknown
     var cursorPosition: CGPoint = CGPoint(x: 0.5, y: 0.5) // Posição normalizada inicial no centro
+    var handPoints: [CGPoint] = [] // Todos os pontos detectados da mão
     
     // Serviço injetável
-    private var visionService: VisionService
+    var visionService: VisionService
     
     // Timer para gerar os balões
     private var spawnTimer: Timer?
@@ -22,7 +23,7 @@ class GameViewModel {
     }
     
     private func setupVisionCallback() {
-        visionService.onHandDetected = { [weak self] gesture, position in
+        visionService.onHandDetected = { [weak self] gesture, position, points in
             guard let self = self else { return }
             
             // A atualização de propriedades de interface através de @Observable
@@ -30,6 +31,7 @@ class GameViewModel {
             // dispara no main thread (no VisionService), está seguro.
             self.currentGesture = gesture
             self.cursorPosition = position
+            self.handPoints = points
             
             self.processGesture(gesture)
         }

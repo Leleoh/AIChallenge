@@ -20,11 +20,18 @@ Aqui está o detalhamento de como construiremos a arquitetura definida na Especi
   - [x] Implementar loop de tempo para gerar balões na tela (`spawnBalloon`).
   - [x] Implementar `processGesture(_ gesture: HandGesture)` para estourar o balão correto caso o usuário acerte o gesto.
 
-- [ ] **Etapa 4: Interface do Usuário (Views)**
-  - [ ] Criar componente auxiliar `CameraPreview` (ponte entre `AVCaptureVideoPreviewLayer` e SwiftUI via `NSViewRepresentable`).
-  - [ ] Criar a `GameView`: Renderizar a câmera no fundo e os `Balloons` num `ZStack` por cima, com animações.
-  - [ ] Criar a `HomeView`: Tela inicial de boas vindas mostrando o score e botão para iniciar o jogo.
+- [x] **Etapa 4: Interface do Usuário (Views)**
+  - [x] Criar componente auxiliar `CameraPreview` (ponte entre `AVCaptureVideoPreviewLayer` e SwiftUI via `NSViewRepresentable`).
+  - [x] Criar a `GameView`: Renderizar a câmera no fundo e os `Balloons` num `ZStack` por cima, com animações.
+  - [x] Criar a `HomeView`: Tela inicial de boas vindas mostrando o score e botão para iniciar o jogo.
 
 - [ ] **Etapa 5: Siri e Atalhos (App Intents)**
   - [ ] Implementar persistência simples do score (AppStorage/UserDefaults).
   - [ ] Criar a Extensão e os structs de `AppIntents` (`StartSessionIntent` e `CheckScoreIntent`).
+
+- [x] **Etapa 6: CoreML Gestures (Desenho no Ar)**
+  - [x] Confirmar adição do modelo `MagicHandsML` ao target do Xcode.
+  - [x] Criar `CoreMLService` para processar a janela de frames e invocar o modelo Action Classifier.
+  - [x] Atualizar `VisionService` para detectar o gatilho (Pinça) e manter o buffer de histórico de frames.
+  - [x] Criar `SandboxViewModel` para gerenciar os estados de desenho e gerar o Path do traçado.
+  - [x] Criar a view `CoreMLSandboxView` com câmera, overlay do traçado e exibição do resultado da predição.

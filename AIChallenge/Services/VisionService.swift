@@ -6,8 +6,12 @@ class VisionService: NSObject {
     let captureSession = AVCaptureSession()
     private let videoDataOutput = AVCaptureVideoDataOutput()
     
-    // Callback para emitir o gesto detectado e a posição normalizada do pulso (para o cursor)
-    var onHandDetected: ((HandGesture, CGPoint) -> Void)?
+    // Callback para emitir o gesto detectado, a posição normalizada do pulso, e a lista de todos os pontos
+    var onHandDetected: ((HandGesture, CGPoint, [CGPoint]) -> Void)?
+    
+    // Callbacks para o CoreML Sandbox (Desenho de Trajetórias)
+    var onPinchStateChanged: ((Bool, CGPoint) -> Void)?
+    var onObservationBuffered: ((VNHumanHandPoseObservation) -> Void)?
     
     private lazy var handPoseRequest: VNDetectHumanHandPoseRequest = {
         let request = VNDetectHumanHandPoseRequest()
@@ -17,7 +21,6 @@ class VisionService: NSObject {
     
     override init() {
         super.init()
-        setupCamera()
     }
     
     private func setupCamera() {
@@ -25,14 +28,14 @@ class VisionService: NSObject {
         
         // No macOS, a câmera embutida
         guard let videoDevice = AVCaptureDevice.default(for: .video) else {
-            print("Câmera não encontrada")
+            print("⚠️ Câmera não encontrada. Você habilitou o Entitlement de Câmera no App Sandbox?")
             captureSession.commitConfiguration()
             return
         }
         
         guard let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
               captureSession.canAddInput(videoDeviceInput) else {
-            print("Não foi possível adicionar o input de vídeo")
+            print("⚠️ Não foi possível adicionar o input de vídeo. Verifique as permissões.")
             captureSession.commitConfiguration()
             return
         }
@@ -54,8 +57,34 @@ class VisionService: NSObject {
     }
     
     func start() {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        if status == .authorized {
+            self.startSession()
+        } else if status == .notDetermined {
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                if granted {
+                    self?.startSession()
+                } else {
+                    print("⚠️ Permissão de câmera negada pelo usuário.")
+                }
+            }
+        } else {
+            print("⚠️ Câmera sem permissão ou restrita. Vá nas Preferências do Sistema para liberar.")
+        }
+    }
+    
+    private func startSession() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.captureSession.startRunning()
+            guard let self = self else { return }
+            
+            // Precisamos configurar a câmera apenas quando temos permissão
+            if self.captureSession.inputs.isEmpty {
+                self.setupCamera()
+            }
+            
+            if !self.captureSession.isRunning {
+                self.captureSession.startRunning()
+            }
         }
     }
     
@@ -84,14 +113,27 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
     
     private func processObservation(_ observation: VNHumanHandPoseObservation) {
         do {
+            // Pegar todos os pontos para renderizar na tela
+            let allPoints = try observation.recognizedPoints(.all)
+            var detectedPoints: [CGPoint] = []
+            
+            for (_, point) in allPoints {
+                if point.confidence > 0.3 {
+                    // Inverte o Y porque a coordenada do Vision tem (0,0) no canto inferior esquerdo
+                    detectedPoints.append(CGPoint(x: point.location.x, y: 1.0 - point.location.y))
+                }
+            }
+            
             let wristPoint = try observation.recognizedPoint(.wrist)
             let indexTip = try observation.recognizedPoint(.indexTip)
             let middleTip = try observation.recognizedPoint(.middleTip)
+            let thumbTip = try observation.recognizedPoint(.thumbTip)
             
             // Garantir que a confiança da detecção é alta o suficiente
             guard wristPoint.confidence > 0.3,
                   indexTip.confidence > 0.3,
-                  middleTip.confidence > 0.3 else { return }
+                  middleTip.confidence > 0.3,
+                  thumbTip.confidence > 0.3 else { return }
             
             let wristLocation = wristPoint.location
             let indexLocation = indexTip.location
@@ -103,6 +145,11 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             
             let avgDistance = (indexDistance + middleDistance) / 2
             
+            // Lógica de Pinça (Pinch) para modo Sandbox de CoreML
+            let pinchDistance = hypot(indexLocation.x - thumbTip.location.x, indexLocation.y - thumbTip.location.y)
+            let isPinching = pinchDistance < 0.04
+            let normalizedIndexLocation = CGPoint(x: indexLocation.x, y: 1.0 - indexLocation.y)
+            
             // Heurística simples
             let gesture: HandGesture
             if avgDistance > 0.25 {
@@ -113,12 +160,17 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
                 gesture = .unknown
             }
             
-            // A coordenada do Vision tem a origem (0,0) no canto inferior esquerdo.
-            // Para UI no macOS/iOS, geralmente a origem é no canto superior esquerdo. Invertemos o Y.
+            // A coordenada do pulso para o cursor principal
             let normalizedLocation = CGPoint(x: wristLocation.x, y: 1.0 - wristLocation.y)
             
             DispatchQueue.main.async { [weak self] in
-                self?.onHandDetected?(gesture, normalizedLocation)
+                self?.onHandDetected?(gesture, normalizedLocation, detectedPoints)
+                
+                // Emite estado de pinça para o Sandbox
+                self?.onPinchStateChanged?(isPinching, normalizedIndexLocation)
+                if isPinching {
+                    self?.onObservationBuffered?(observation)
+                }
             }
         } catch {
             // Pontos não reconhecidos
