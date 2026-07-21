@@ -9,9 +9,12 @@ class VisionService: NSObject {
     // Callback para emitir o gesto detectado, a posição normalizada do pulso, e a lista de todos os pontos
     var onHandDetected: ((HandGesture, CGPoint, [CGPoint]) -> Void)?
     
-    // Callbacks para o CoreML Sandbox (Desenho de Trajetórias)
-    var onPinchStateChanged: ((Bool, CGPoint) -> Void)?
-    var onObservationBuffered: ((VNHumanHandPoseObservation) -> Void)?
+    // Callback contínuo para o CoreML (Sliding Window)
+    var onObservation: ((VNHumanHandPoseObservation) -> Void)?
+    
+    // Callback para limpar o buffer quando a mão sumir
+    var onHandLost: (() -> Void)?
+
     
     private lazy var handPoseRequest: VNDetectHumanHandPoseRequest = {
         let request = VNDetectHumanHandPoseRequest()
@@ -38,6 +41,16 @@ class VisionService: NSObject {
             print("⚠️ Não foi possível adicionar o input de vídeo. Verifique as permissões.")
             captureSession.commitConfiguration()
             return
+        }
+        
+        // Travar em 30fps para igualar ao dataset de treinamento do Create ML!
+        do {
+            try videoDevice.lockForConfiguration()
+            videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 30)
+            videoDevice.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 30)
+            videoDevice.unlockForConfiguration()
+        } catch {
+            print("Não foi possível travar a câmera em 30fps: \(error)")
         }
         
         captureSession.addInput(videoDeviceInput)
@@ -102,6 +115,9 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             try handler.perform([handPoseRequest])
             
             guard let observation = handPoseRequest.results?.first else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onHandLost?()
+                }
                 return // Nenhuma mão detectada
             }
             
@@ -118,7 +134,7 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             var detectedPoints: [CGPoint] = []
             
             for (_, point) in allPoints {
-                if point.confidence > 0.3 {
+                if point.confidence > 0.6 {
                     // Inverte o Y porque a coordenada do Vision tem (0,0) no canto inferior esquerdo
                     detectedPoints.append(CGPoint(x: point.location.x, y: 1.0 - point.location.y))
                 }
@@ -127,13 +143,16 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             let wristPoint = try observation.recognizedPoint(.wrist)
             let indexTip = try observation.recognizedPoint(.indexTip)
             let middleTip = try observation.recognizedPoint(.middleTip)
-            let thumbTip = try observation.recognizedPoint(.thumbTip)
             
-            // Garantir que a confiança da detecção é alta o suficiente
-            guard wristPoint.confidence > 0.3,
-                  indexTip.confidence > 0.3,
-                  middleTip.confidence > 0.3,
-                  thumbTip.confidence > 0.3 else { return }
+            // Garantir que a confiança da detecção é alta o suficiente, mas tolerante a movimento rápido (0.4)
+            guard wristPoint.confidence > 0.4,
+                  indexTip.confidence > 0.4,
+                  middleTip.confidence > 0.4 else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onHandLost?()
+                }
+                return
+            }
             
             let wristLocation = wristPoint.location
             let indexLocation = indexTip.location
@@ -144,11 +163,6 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             let middleDistance = hypot(middleLocation.x - wristLocation.x, middleLocation.y - wristLocation.y)
             
             let avgDistance = (indexDistance + middleDistance) / 2
-            
-            // Lógica de Pinça (Pinch) para modo Sandbox de CoreML
-            let pinchDistance = hypot(indexLocation.x - thumbTip.location.x, indexLocation.y - thumbTip.location.y)
-            let isPinching = pinchDistance < 0.04
-            let normalizedIndexLocation = CGPoint(x: indexLocation.x, y: 1.0 - indexLocation.y)
             
             // Heurística simples
             let gesture: HandGesture
@@ -161,16 +175,12 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
             
             // A coordenada do pulso para o cursor principal
+            // Agora a câmera é espelhada nativamente, então não precisamos mais fazer 1.0 - x
             let normalizedLocation = CGPoint(x: wristLocation.x, y: 1.0 - wristLocation.y)
             
             DispatchQueue.main.async { [weak self] in
                 self?.onHandDetected?(gesture, normalizedLocation, detectedPoints)
-                
-                // Emite estado de pinça para o Sandbox
-                self?.onPinchStateChanged?(isPinching, normalizedIndexLocation)
-                if isPinching {
-                    self?.onObservationBuffered?(observation)
-                }
+                self?.onObservation?(observation)
             }
         } catch {
             // Pontos não reconhecidos

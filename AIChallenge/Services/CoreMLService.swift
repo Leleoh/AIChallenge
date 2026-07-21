@@ -17,55 +17,94 @@ class CoreMLService {
         }
     }
     
-    func predict(observations: [VNHumanHandPoseObservation]) -> GesturePrediction? {
+    func predict(observations: [VNHumanHandPoseObservation]) throws -> GesturePrediction? {
+        if model == nil {
+            throw NSError(domain: "CoreML", code: -1, userInfo: [NSLocalizedDescriptionKey: "Modelo MagicHandsML não carregou. Verifique se o Target está marcado no Xcode."])
+        }
         guard let model = model, observations.count > 0 else { return nil }
         
-        do {
-            // Criar o MLMultiArray de input no formato [1, windowSize, 3, 21]
-            let poses = try MLMultiArray(shape: [1, NSNumber(value: windowSize), 3, 21], dataType: .float32)
+        let poses = try MLMultiArray(shape: [NSNumber(value: windowSize), 3, 21], dataType: .float32)
+        
+        let jointsOrder: [VNHumanHandPoseObservation.JointName] = [
+            .wrist,
+            .thumbCMC, .thumbMP, .thumbIP, .thumbTip,
+            .indexMCP, .indexPIP, .indexDIP, .indexTip,
+            .middleMCP, .middlePIP, .middleDIP, .middleTip,
+            .ringMCP, .ringPIP, .ringDIP, .ringTip,
+            .littleMCP, .littlePIP, .littleDIP, .littleTip
+        ]
+        
+        let ptr = poses.dataPointer.bindMemory(to: Float32.self, capacity: windowSize * 3 * 21)
+        let strides = poses.strides.map { $0.intValue }
+        
+        let count = min(observations.count, windowSize)
+        var hasLogged = false
+        
+        for i in 0..<count {
+            let obs = observations[i]
             
-            let count = min(observations.count, windowSize)
-            for i in 0..<count {
-                let obs = observations[i]
-                let frameMultiArray = try obs.keypointsMultiArray()
+            for v in 0..<21 {
+                let jointName = jointsOrder[v]
+                let point = try? obs.recognizedPoint(jointName)
                 
-                // O frameMultiArray gerado pelo Vision tem formato [3, 21]
-                for c in 0..<3 {
-                    for v in 0..<21 {
-                        let idx = [0, NSNumber(value: i), NSNumber(value: c), NSNumber(value: v)]
-                        let val = frameMultiArray[[NSNumber(value: c), NSNumber(value: v)]]
-                        poses[idx] = val
-                    }
+                let rawX = Float32(point?.location.x ?? 0.0)
+                let confidence = Float32(point?.confidence ?? 0.0)
+                
+                // Inversão do Eixo X: Os vídeos do QuickTime salvam sem espelho, mas a câmera frontal do app é espelhada.
+                let x = confidence > 0.0 ? 1.0 - rawX : 0.0
+                let y = Float32(point?.location.y ?? 0.0) // Vision usa bottom-left nativamente, exatamente o que o CoreML espera
+                
+                if i == 0 && v == 0 && !hasLogged {
+                    print("👉 Primeiro valor raw (X do Pulso Manual): \(x)")
+                    hasLogged = true
                 }
+                
+                // C=0 -> X
+                ptr[i * strides[0] + 0 * strides[1] + v * strides[2]] = x
+                // C=1 -> Y
+                ptr[i * strides[0] + 1 * strides[1] + v * strides[2]] = y
+                // C=2 -> Confidence
+                ptr[i * strides[0] + 2 * strides[1] + v * strides[2]] = confidence
             }
-            
-            // Se o usuário soltou a pinça muito rápido (menos de 60 frames), 
-            // repetimos o último frame para preencher o resto do array de 2 segundos.
-            if count < windowSize && count > 0 {
-                let lastObs = observations[count - 1]
-                let frameMultiArray = try lastObs.keypointsMultiArray()
-                for i in count..<windowSize {
-                    for c in 0..<3 {
-                        for v in 0..<21 {
-                            let idx = [0, NSNumber(value: i), NSNumber(value: c), NSNumber(value: v)]
-                            let val = frameMultiArray[[NSNumber(value: c), NSNumber(value: v)]]
-                            poses[idx] = val
-                        }
-                    }
-                }
-            }
-            
-            let input = MagicHandsMLInput(poses: poses)
-            let output = try model.prediction(input: input)
-            
-            let label = output.label
-            let prob = output.labelProbabilities[label] ?? 0.0
-            
-            return GesturePrediction(label: label, confidence: prob)
-            
-        } catch {
-            print("Erro na predição do CoreML: \(error)")
-            return nil
         }
+        
+        // Se precisarmos preencher o resto com o último frame
+        if count < windowSize && count > 0 {
+            let lastObs = observations[count - 1]
+            for i in count..<windowSize {
+                for v in 0..<21 {
+                    let jointName = jointsOrder[v]
+                    let point = try? lastObs.recognizedPoint(jointName)
+                    
+                    let rawX = Float32(point?.location.x ?? 0.0)
+                    let confidence = Float32(point?.confidence ?? 0.0)
+                    
+                    let x = confidence > 0.0 ? 1.0 - rawX : 0.0
+                    let y = Float32(point?.location.y ?? 0.0)
+                    
+                    ptr[i * strides[0] + 0 * strides[1] + v * strides[2]] = x
+                    ptr[i * strides[0] + 1 * strides[1] + v * strides[2]] = y
+                    ptr[i * strides[0] + 2 * strides[1] + v * strides[2]] = confidence
+                }
+            }
+        }
+        
+        // Debug do conteúdo do array:
+        var sum: Float32 = 0.0
+        for i in 0..<(windowSize * 3 * 21) {
+            sum += ptr[i]
+        }
+        print("📊 Soma do Array Manual: \(sum)")
+        
+        let input = MagicHandsMLInput(poses: poses)
+        let output = try model.prediction(input: input)
+        
+        let label = output.label
+        let prob = output.labelProbabilities[label] ?? 0.0
+        
+        // Debugging no console
+        print("🧠 CoreML Previu: \(label) (\(prob)) | Frames no buffer: \(observations.count)")
+        
+        return GesturePrediction(label: label, confidence: prob, allProbabilities: output.labelProbabilities)
     }
 }
