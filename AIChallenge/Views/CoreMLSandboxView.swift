@@ -71,42 +71,44 @@ struct CoreMLSandboxView: View {
                 if let prediction = viewModel.prediction {
                     VStack(spacing: 15) {
                         if viewModel.hasWon {
-                            Text("🎉 Você Acertou!")
-                                .font(.title)
-                                .foregroundColor(.green)
-                                .bold()
-                            
-                            Button(action: {
-                                viewModel.pickNewTarget()
-                            }) {
-                                Text("Próximo Gesto")
-                                    .font(.title2)
+                            VStack {
+                                Text("🎉 Você Acertou!")
+                                    .font(.title)
+                                    .foregroundColor(.green)
                                     .bold()
-                                    .padding()
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            VStack(spacing: 5) {
-                                Text("Detectando: \(prediction.label) (\(String(format: "%.0f%%", prediction.confidence * 100)))")
-                                    .font(.title3)
-                                    .foregroundColor(.orange)
-                                    .animation(.default, value: prediction.label)
                                 
-                                // DEBUG VISUAL:
-                                Text("Buffer: \(viewModel.observationBuffer.count)/60 frames")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                
-                                // Mostra os top 3 palpites da IA
-                                let top3 = prediction.allProbabilities.sorted { $0.value > $1.value }.prefix(3)
-                                ForEach(top3, id: \.key) { guess in
-                                    Text("\(guess.key): \(String(format: "%.1f%%", guess.value * 100))")
-                                        .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.6))
+                                Button(action: {
+                                    viewModel.pickNewTarget()
+                                }) {
+                                    Text("Novo Desafio")
+                                        .font(.headline)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 10)
+                                        .background(Color.blue)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(10)
                                 }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.bottom, 10)
+                        }
+                        
+                        // O Debug Panel agora fica SEMPRE visível!
+                        VStack(spacing: 5) {
+                            Text("Detectando: \(prediction.label) (\(String(format: "%.0f%%", prediction.confidence * 100)))")
+                                .font(.title3)
+                                .foregroundColor(viewModel.hasWon ? .green : .orange)
+                                .animation(.default, value: prediction.label)
+                            
+                            Text("Buffer: \(viewModel.observationBuffer.count)/60 frames")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            
+                            let top3 = prediction.allProbabilities.sorted { $0.value > $1.value }.prefix(3)
+                            ForEach(top3, id: \.key) { guess in
+                                Text("\(guess.key): \(String(format: "%.1f%%", guess.value * 100))")
+                                    .font(.caption2)
+                                    .foregroundColor(.white.opacity(0.6))
                             }
                         }
                     }

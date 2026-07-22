@@ -23,9 +23,9 @@ class SandboxViewModel {
     var visionService: VisionService
     private var coreMLService = CoreMLService.shared
     
-    // Evita rodar predição em todo único frame para economizar bateria (Ex: rodar a cada 5 frames)
+    // Rodar predição em todo único frame, exatamente como o Create ML faz no Live Preview
     private var frameCounter = 0
-    private let predictionInterval = 5
+    private let predictionInterval = 1
     
     init(visionService: VisionService) {
         self.visionService = visionService
@@ -103,7 +103,7 @@ class SandboxViewModel {
     }
     
     private func analyzeWindow() {
-        if hasWon { return } // Congela a IA quando acertar
+        // Agora a IA nunca vai congelar, permitindo que você debuge continuamente
         
         // Passa a janela inteira pro CoreML
         do {

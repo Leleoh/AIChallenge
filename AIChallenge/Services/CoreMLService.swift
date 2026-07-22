@@ -50,8 +50,9 @@ class CoreMLService {
                 let rawX = Float32(point?.location.x ?? 0.0)
                 let confidence = Float32(point?.confidence ?? 0.0)
                 
-                // Inversão do Eixo X: Os vídeos do QuickTime salvam sem espelho, mas a câmera frontal do app é espelhada.
-                let x = confidence > 0.0 ? 1.0 - rawX : 0.0
+                // O usuário confirmou que a orientação é a mesma do QuickTime (pinta no mesmo lado), 
+                // então não precisamos inverter o X.
+                let x = confidence > 0.0 ? rawX : 0.0
                 let y = Float32(point?.location.y ?? 0.0) // Vision usa bottom-left nativamente, exatamente o que o CoreML espera
                 
                 if i == 0 && v == 0 && !hasLogged {
@@ -79,7 +80,7 @@ class CoreMLService {
                     let rawX = Float32(point?.location.x ?? 0.0)
                     let confidence = Float32(point?.confidence ?? 0.0)
                     
-                    let x = confidence > 0.0 ? 1.0 - rawX : 0.0
+                    let x = confidence > 0.0 ? rawX : 0.0
                     let y = Float32(point?.location.y ?? 0.0)
                     
                     ptr[i * strides[0] + 0 * strides[1] + v * strides[2]] = x
