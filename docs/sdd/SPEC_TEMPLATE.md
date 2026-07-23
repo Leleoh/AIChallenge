@@ -52,5 +52,14 @@ Quais views precisamos criar? Como elas se conectam?
 - O que acontece se a lista estiver vazia?
   - *Comportamento:* Exibir uma view `EmptyStateView` com uma mensagem amigável e um botão de adicionar.
 
+## 8. Estratégia de Testes (QA Strategy)
+- **Unit Tests:** O que deve ser coberto por testes de unidade? (Ex: Lógica de negócio nas ViewModels, validação de regras).
+- **Testes Manuais / UI:** O que exige verificação humana ou testes de interface? (Ex: Uso da câmera, gestos no ar, transições de tela).
+
+## 9. Histórico de Revisões (Changelog)
+| Data       | Versão | Autor          | Descrição das Alterações                          |
+|------------|--------|----------------|---------------------------------------------------|
+| DD/MM/AAAA | 1.0    | [Seu Nome]     | Criação inicial do documento de especificação.    |
+
 ---
 *Nota para a IA:* Ao implementar esta especificação, siga estritamente as decisões arquiteturais acima e informe se encontrar qualquer inconsistência antes de escrever o código.

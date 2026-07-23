@@ -4,7 +4,7 @@
 > **Data:** 15/07/2026
 
 ## 1. Visão Geral (Overview)
-Aplicativo gamificado para reabilitação motora e fisioterapia. O usuário realiza gestos e movimentos rastreados pela câmera do dispositivo para interagir com elementos virtuais (como estourar balões). O objetivo inicial é focar em movimentos abrangentes e simples (posição da mão), priorizando macOS com futura expansão para iPadOS.
+Aplicativo gamificado para movimentos da mão, no futuro, quero expandir para reabilitação motora e fisioterapia. O usuário realiza gestos e movimentos rastreados pela câmera do dispositivo para interagir com elementos virtuais (como estourar balões). O objetivo inicial é focar em movimentos abrangentes e simples (posição da mão), priorizando macOS com futura expansão para iPadOS.
 
 ## 2. Requisitos (Requirements)
 - **O que deve ter:** 

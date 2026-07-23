@@ -40,7 +40,6 @@ struct GesturePrediction {
 ## 5. Estrutura de Telas / UI (Views)
 - **`CoreMLSandboxView`**: Nova tela dedicada para testes.
   - Fundo: Feed da câmera em tempo real.
-  - Overlay: Uma linha (Path) desenhada na tela seguindo o dedo indicador enquanto o estado for `drawing`.
   - UI Superior: O rótulo da predição atual (ex: "Isso é um Quadrado (98%)").
 
 ## 6. Lógica de Negócio e Estados (ViewModels & Services)
@@ -53,7 +52,12 @@ struct GesturePrediction {
   - Controla o `DrawingState`.
   - Gerencia o traçado visual na tela (`Path`).
 
-## 7. Casos Extremos e Tratamento de Erros (Edge Cases)
-- **Mão sai da tela durante o desenho:** O traçado deve ser cancelado automaticamente.
+## 7. Decisões Arquiteturais de ML (ML Architecture Decisions)
+- **Sliding Window Contínua (60 Frames):** O Action Classifier foi treinado com uma janela temporal de exatos 2 segundos (60 frames a 30fps). Para igualar a acurácia do *Live Preview* da Apple, o modelo roda a predição a cada novo frame (`predictionInterval = 1`) após o buffer ser preenchido (60 frames completos), sem usar artifícios de padding.
+- **Injeção de Memória (Memory Pointers):** Para contornar bugs de arrays vazios e otimizar a conversão de `Double` para `Float32`, extraímos os dados nativos usando `observation.recognizedPoint()` e injetamos as coordenadas (X, Y, Confidence) diretamente na memória bruta do `MLMultiArray` usando `dataPointer.bindMemory(to: Float32.self)`. Isso provou ser extremamente eficiente.
+- **Prevenção de Algorithmic Bias:** O dataset foi calibrado (aprox. 500 itens) contendo instâncias de mãos esquerdas, direitas e mãos femininas para garantir generalização anatômica.
+
+## 8. Casos Extremos e Tratamento de Erros (Edge Cases)
+- **Mão sai da tela durante o desenho:** O traçado deve ser cancelado automaticamente. Em caso da perda da mão por mais de 30 frames (1 segundo), a janela do CoreML sofre um Flush (limpeza) para evitar teletransporte de coordenadas (`onHandLost`).
 - **Modelo CoreML não encontrado:** Exibir um aviso amigável na tela informando que o modelo `.mlmodel` ainda não foi adicionado ao Xcode.
-- **Baixa confiança:** Se a predição for inferior a um limite (ex: 60%), classificar como "Forma Desconhecida".
+- **Baixa confiança:** Se a predição for inferior a um limite (ex: 60%), o jogo não considerará o gesto como um "Acerto".
