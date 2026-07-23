@@ -1,6 +1,6 @@
 # 📱 Especificação da Funcionalidade: Magic Therapy (Fisioterapia Gamificada)
 
-> **Status:** Em Revisão (Fase 2 - Design Finalizado)
+> **Status:** Implementado (Fase 4)
 > **Data:** 15/07/2026
 
 ## 1. Visão Geral (Overview)
@@ -73,4 +73,13 @@ struct GameSession {
 - **Limites de Tela:** O sistema de colisão deve traduzir as coordenadas normalizadas (do Vision) para o tamanho real da janela do Mac no momento.
 
 ---
-*Fase 2 Concluída: Após a aprovação deste documento, iremos para a Fase 3 (Criar a lista de Tasks de Implementação).*
+
+## 8. Estratégia de Testes (QA Strategy)
+- **Unit Tests:** Lógica de negócio da `GameViewModel`, como o cálculo de pontuação (`score`) e limites de tela.
+- **Testes Manuais / UI:** Testar estabilidade do Vision Tracking sob luzes variadas e verificar overlay de balões.
+
+## 9. Histórico de Revisões (Changelog)
+| Data       | Versão | Autor          | Descrição das Alterações                          |
+|------------|--------|----------------|---------------------------------------------------|
+| 15/07/2026 | 1.0    | Leonel         | Criação inicial do documento de especificação.    |
+| 23/07/2026 | 1.1    | AI / Leonel    | Status alterado para Implementado. Adicionado seção QA e Changelog. |

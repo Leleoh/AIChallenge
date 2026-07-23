@@ -1,6 +1,6 @@
 # 📱 Especificação da Funcionalidade: Magic Therapy - CoreML Gestures (Desenho no Ar)
 
-> **Status:** Em Revisão (Fase 2)
+> **Status:** Implementado (Fase 4)
 > **Data:** 16/07/2026
 
 ## 1. Visão Geral (Overview)
@@ -61,3 +61,13 @@ struct GesturePrediction {
 - **Mão sai da tela durante o desenho:** O traçado deve ser cancelado automaticamente. Em caso da perda da mão por mais de 30 frames (1 segundo), a janela do CoreML sofre um Flush (limpeza) para evitar teletransporte de coordenadas (`onHandLost`).
 - **Modelo CoreML não encontrado:** Exibir um aviso amigável na tela informando que o modelo `.mlmodel` ainda não foi adicionado ao Xcode.
 - **Baixa confiança:** Se a predição for inferior a um limite (ex: 60%), o jogo não considerará o gesto como um "Acerto".
+
+## 8. Estratégia de Testes (QA Strategy)
+- **Unit Tests:** Cobertura do parser de predição e injeção de memória do `CoreMLService`.
+- **Testes Manuais / UI:** Testar o "Modo Sandbox" desenhando repetidas vezes, validar falsos positivos em diferentes iluminações e ângulos de câmera.
+
+## 9. Histórico de Revisões (Changelog)
+| Data       | Versão | Autor          | Descrição das Alterações                          |
+|------------|--------|----------------|---------------------------------------------------|
+| 16/07/2026 | 1.0    | Leonel         | Criação inicial do documento de especificação.    |
+| 23/07/2026 | 1.1    | Leonel         | Modelo MagicHandsML re-treinado com mais vídeos para melhor identificação. Status alterado para Implementado. |

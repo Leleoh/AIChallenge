@@ -1,3 +1,4 @@
+// Ref: docs/sdd/CoreML_Gestures_Spec.md
 import Foundation
 import CoreML
 import Vision
