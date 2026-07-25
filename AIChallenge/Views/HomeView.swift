@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var isPlaying: Bool = false
     @State private var isSandboxMode: Bool = false
     @State private var isFallingOrbsMode: Bool = false
+    @State private var isCowsMode: Bool = false
     
     var body: some View {
         Group {
@@ -14,6 +15,8 @@ struct HomeView: View {
                 CoreMLSandboxView(isPresented: $isSandboxMode)
             } else if isFallingOrbsMode {
                 FallingOrbsGameView(isPresented: $isFallingOrbsMode)
+            } else if isCowsMode {
+                CowsGameView(isPresented: $isCowsMode)
             } else {
                 VStack(spacing: 20) {
                     Text("Magic Therapy")
@@ -25,13 +28,27 @@ struct HomeView: View {
                         .foregroundColor(.secondary)
                     
                     Button(action: {
-                        isFallingOrbsMode = true
+                        isCowsMode = true
                     }) {
-                        Text("🔮 Modo Queda de Orbs (CoreML)")
+                        Text("🐮 Modo Abdução 8-Bit (SpriteKit)")
                             .font(.title2)
                             .bold()
                             .padding()
-                            .frame(width: 320)
+                            .frame(width: 340)
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(15)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(action: {
+                        isFallingOrbsMode = true
+                    }) {
+                        Text("🔮 Modo Queda de Orbs (CoreML)")
+                            .font(.title3)
+                            .bold()
+                            .padding()
+                            .frame(width: 340)
                             .background(Color.blue)
                             .foregroundColor(.white)
                             .cornerRadius(15)
