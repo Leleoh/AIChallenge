@@ -1,53 +1,41 @@
-# 📱 Especificação da Funcionalidade: Cenário 2D em SpriteKit (Abdução de Vacas)
+# 📱 Especificação da Funcionalidade: Cenário 2D Pixel Art em SpriteKit (Abdução de Vacas)
 
-> **Status:** Proposto (Fase 2 - Design)
+> **Status:** Aprovado / Implementado (Fase 4 - Execute v4.0)
 > **Data:** 25/07/2026
-> **Módulo:** SpriteKit / UI (Game Scene)
+> **Módulo:** SpriteKit / Assets / UI (Game Scene)
 
 ---
 
 ## 1. Visão Geral (Overview)
-Transição do motor de renderização do jogo de SwiftUI puro para **SpriteKit (`SKScene` + `SpriteView`)**. Esta especificação define a criação do cenário base 2D utilizando as camadas de assets fornecidas (`Ceu`, `NuvensBranca`, `Relevo` e `Pasto`), preparando a estrutura para o futuro loop de abdução de vacas por OVNIs.
+Adição de animação do sprite da vaca (`VacaMalhadaCaminhando`) sobre a camada de pasto, alternando entre os 5 frames de caminhada e movimentando a vaca horizontalmente pelo cenário.
 
 ---
 
-## 2. Camadas do Cenário (Z-Ordering & Nodes)
+## 2. Requisitos (Requirements)
 
-A cena do SpriteKit (`CowsGameScene`) será composta pelas seguintes camadas empilhadas:
-
-| Camada | Asset Name | Node Type | Z-Position | Descrição / Comportamento |
-|---|---|---|---|---|
-| **1. Céu** | `Ceu` | `SKSpriteNode` | `0` | Fundo principal da cena, escalado para cobrir a tela inteira. |
-| **2. Nuvens** | `NuvensBranca` | `SKSpriteNode` | `1` | Nuvens no topo/céu. Movimento sutil de paralaxe horizontal (drift contínuo). |
-| **3. Relevo** | `Relevo` | `SKSpriteNode` | `2` | Montanhas/colinas de fundo posicionadas no terço médio. |
-| **4. Pasto** | `Pasto` | `SKSpriteNode` | `3` | Chão/gramado no primeiro plano, base onde as vacas ficarão no futuro. |
+- **O que deve ter:**
+  - **Animação de Caminhada (5 Frames)**: Carregar as texturas `VacaMalhadaCaminhando1` até `VacaMalhadaCaminhando5` com `filteringMode = .nearest`.
+  - **Loop de Animação**: Executar `SKAction.animate(with: textures, timePerFrame: 0.15)` em loop infinito.
+  - **Movimentação no Pasto**: Posicionar a vaca no primeiro plano (`zPosition = 4`), caminhando suavemente da esquerda para a direita no pasto.
+  - **Limpeza de Alpha 1-Bit**: Preservar bordas 1-bit secas sem contorno branco nos sprites da vaca.
 
 ---
 
-## 3. Arquitetura do Componente
+## 3. Arquitetura e Padrões (Architecture & Patterns)
 
-- **`CowsGameScene.swift` (`SKScene`)**:
-  - Responsável por montar a hierarquia de `SKSpriteNode`s.
-  - Ajuste dinâmico de tamanho (`didChangeSize`) para responsividade em qualquer resolução de janela do macOS (`scaleMode = .resizeFill` ou `.aspectFill`).
-  - Animação simples de movimento horizontal para as nuvens.
-
-- **`CowsGameView.swift` (SwiftUI View)**:
-  - Encapsula a cena através de `SpriteView(scene: scene)`.
-  - Permite sobrepor a camada de Visão/Câmera e HUD de pontuação futuramente via `ZStack`.
+- **Engine:** SpriteKit (`CowsGameScene`)
+- **Node:** `vacaNode` (`SKSpriteNode`) adicionado ao `gameLayer` em `zPosition = 4`.
+- **Animação:** `SKAction.repeatForever(SKAction.animate(...))`
 
 ---
 
-## 4. Plano de Tarefas (Tasks - Fase 3)
+## 4. Histórico de Revisões (Changelog)
 
-1. [ ] Criar a classe `CowsGameScene.swift` (`SKScene`).
-2. [ ] Configurar o posicionamento e escala das 4 camadas (`Ceu`, `NuvensBranca`, `Relevo`, `Pasto`).
-3. [ ] Adicionar movimento contínuo/paralaxe para as nuvens brancas.
-4. [ ] Criar a view SwiftUI `CowsGameView.swift` com `SpriteView`.
-5. [ ] Integrar a nova cena no `HomeView.swift` para visualização.
-
----
-
-## 5. Histórico de Alterações (Changelog)
-| Data | Versão | Autor | Descrição |
+| Data | Versão | Autor | Descrição das Alterações |
 |---|---|---|---|
-| 25/07/2026 | 1.0 | Leonel / AI | Criação da especificação da cena SpriteKit com as camadas Ceu, NuvensBranca, Relevo e Pasto. |
+| 25/07/2026 | 1.0 | Leonel / AI | Especificação inicial da cena SpriteKit. |
+| 25/07/2026 | 2.0 | Leonel / AI | Limpeza de transparência 1-bit nos PNGs. |
+| 25/07/2026 | 3.0 | Leonel / AI | Arquitetura de Container Node (`gameLayer`) + Aspect Fill manual. |
+| 25/07/2026 | 4.0 | Leonel / AI | Adição da vaca animada (`VacaMalhadaCaminhando` 1..5) caminhando no pasto. |
+
+---
