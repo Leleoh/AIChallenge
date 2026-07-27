@@ -1,4 +1,4 @@
-// Ref: docs/sdd/SpriteKit_CowsGame_Spec.md
+// Ref: docs/sdd/CowsAbduction_GameLoop_Spec.md
 import SpriteKit
 
 class CowsGameScene: SKScene {
@@ -10,33 +10,40 @@ class CowsGameScene: SKScene {
     private var pastoNode: SKSpriteNode!
     private var nuvensNode1: SKSpriteNode!
     private var nuvensNode2: SKSpriteNode!
-    private var vacaNode: SKSpriteNode!
-    private var vacaDormindoNode: SKSpriteNode!
-    private var discoNode: SKSpriteNode!
-    private var beamNode: SKShapeNode!
     
+    // Lista de nós de vacas no pasto
+    private var cowNodes: [SKSpriteNode] = []
+    
+    // Mapeamento de abduções ativas na cena (Target ID -> Nós da cena)
+    private struct AbductionNodeGroup {
+        let ufoNode: SKSpriteNode
+        let beamNode: SKShapeNode
+        let badgeNode: SKNode
+        let cowNode: SKSpriteNode
+        let originalCowPosition: CGPoint
+        var abductionTimer: Timer?
+    }
+    
+    private var activeNodesMap: [UUID: AbductionNodeGroup] = [:]
+    
+    weak var viewModel: CowsGameViewModel?
     static let nativeSize = CGSize(width: 1512, height: 850)
     
+    private var spawnTimer: Timer?
+    
     override func didMove(to view: SKView) {
-        // A âncora da cena fica no canto inferior esquerdo para facilitar a matemática
         self.anchorPoint = .zero
         self.backgroundColor = SKColor(red: 0.35, green: 0.73, blue: 0.88, alpha: 1.0)
         
-        // Adiciona o container principal à cena
         addChild(gameLayer)
         
         setupLayers()
         layoutScene()
         setupCloudParallax()
-        setupCowAnimation()
-        setupSleepingCowAnimation()
-        setupUFOAnimation()
-        setupAbductionBeam()
+        setupCows()
     }
     
     private func setupLayers() {
-        // Todas as camadas são adicionadas ao `gameLayer`
-        
         let ceuTex = SKTexture(imageNamed: "Ceu")
         ceuTex.filteringMode = .nearest
         ceuNode = SKSpriteNode(texture: ceuTex)
@@ -65,44 +72,6 @@ class CowsGameScene: SKScene {
         pastoNode = SKSpriteNode(texture: pastoTex)
         pastoNode.zPosition = 3
         gameLayer.addChild(pastoNode)
-        
-        // 5. Vaca Caminhando (Z: 4)
-        var cowTextures: [SKTexture] = []
-        for i in 1...5 {
-            let tex = SKTexture(imageNamed: "VacaMalhadaCaminhando\(i)")
-            tex.filteringMode = .nearest
-            cowTextures.append(tex)
-        }
-        
-        if let firstTex = cowTextures.first {
-            vacaNode = SKSpriteNode(texture: firstTex)
-            vacaNode.zPosition = 4
-            vacaNode.setScale(1.0)
-            gameLayer.addChild(vacaNode)
-        }
-        
-        // 6. Vaca Dormindo (Z: 4)
-        var sleepingTextures: [SKTexture] = []
-        for i in 1...6 {
-            let tex = SKTexture(imageNamed: "VacaMalhadaDormindo\(i)")
-            tex.filteringMode = .nearest
-            sleepingTextures.append(tex)
-        }
-        
-        if let firstSleepTex = sleepingTextures.first {
-            vacaDormindoNode = SKSpriteNode(texture: firstSleepTex)
-            vacaDormindoNode.zPosition = 4
-            vacaDormindoNode.setScale(1.0)
-            gameLayer.addChild(vacaDormindoNode)
-        }
-        
-        // 7. Disco Voador / OVNI (Z: 5)
-        let discoTex = SKTexture(imageNamed: "DiscoVoador")
-        discoTex.filteringMode = .nearest
-        discoNode = SKSpriteNode(texture: discoTex)
-        discoNode.zPosition = 5
-        discoNode.setScale(0.8)
-        gameLayer.addChild(discoNode)
     }
     
     private func setupCloudParallax() {
@@ -121,102 +90,269 @@ class CowsGameScene: SKScene {
         nuvensNode2.run(repeatAction)
     }
     
-    private func setupCowAnimation() {
-        guard vacaNode != nil else { return }
+    private func setupCows() {
+        cowNodes.forEach { $0.removeFromParent() }
+        cowNodes.removeAll()
         
-        var cowTextures: [SKTexture] = []
+        // Vaca 1: Malhada Caminhando / Parada (Esquerda)
+        var cow1Textures: [SKTexture] = []
         for i in 1...5 {
             let tex = SKTexture(imageNamed: "VacaMalhadaCaminhando\(i)")
             tex.filteringMode = .nearest
-            cowTextures.append(tex)
+            cow1Textures.append(tex)
+        }
+        if let firstTex = cow1Textures.first {
+            let vaca1 = SKSpriteNode(texture: firstTex)
+            vaca1.zPosition = 4
+            vaca1.position = CGPoint(x: -350, y: -250)
+            vaca1.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.2)))
+            gameLayer.addChild(vaca1)
+            cowNodes.append(vaca1)
         }
         
-        let animateAction = SKAction.animate(with: cowTextures, timePerFrame: 0.15)
-        let repeatAnimate = SKAction.repeatForever(animateAction)
-        vacaNode.run(repeatAnimate, withKey: "cowWalkAnimation")
-        
-        let walkDistance: CGFloat = 350.0
-        let walkDuration: TimeInterval = 12.0
-        
-        let moveRight = SKAction.moveBy(x: walkDistance, y: 0, duration: walkDuration)
-        let flipLeft = SKAction.run { [weak self] in
-            self?.vacaNode.xScale = -abs(self?.vacaNode.xScale ?? 1.0)
-        }
-        let moveLeft = SKAction.moveBy(x: -walkDistance, y: 0, duration: walkDuration)
-        let flipRight = SKAction.run { [weak self] in
-            self?.vacaNode.xScale = abs(self?.vacaNode.xScale ?? 1.0)
-        }
-        
-        let walkSequence = SKAction.sequence([moveRight, flipLeft, moveLeft, flipRight])
-        let repeatWalk = SKAction.repeatForever(walkSequence)
-        vacaNode.run(repeatWalk, withKey: "cowMovement")
-    }
-    
-    private func setupSleepingCowAnimation() {
-        guard vacaDormindoNode != nil else { return }
-        
-        var sleepingTextures: [SKTexture] = []
+        // Vaca 2: Malhada Dormindo (Centro)
+        var sleepTextures: [SKTexture] = []
         for i in 1...6 {
             let tex = SKTexture(imageNamed: "VacaMalhadaDormindo\(i)")
             tex.filteringMode = .nearest
-            sleepingTextures.append(tex)
+            sleepTextures.append(tex)
+        }
+        if let firstSleepTex = sleepTextures.first {
+            let vaca2 = SKSpriteNode(texture: firstSleepTex)
+            vaca2.zPosition = 4
+            vaca2.position = CGPoint(x: 0, y: -260)
+            vaca2.run(SKAction.repeatForever(SKAction.animate(with: sleepTextures, timePerFrame: 0.3)))
+            gameLayer.addChild(vaca2)
+            cowNodes.append(vaca2)
         }
         
-        let animateAction = SKAction.animate(with: sleepingTextures, timePerFrame: 0.3)
-        let repeatAnimate = SKAction.repeatForever(animateAction)
-        vacaDormindoNode.run(repeatAnimate, withKey: "cowSleepAnimation")
+        // Vaca 3: Malhada (Direita)
+        if let firstTex = cow1Textures.first {
+            let vaca3 = SKSpriteNode(texture: firstTex)
+            vaca3.zPosition = 4
+            vaca3.position = CGPoint(x: 350, y: -250)
+            vaca3.xScale = -1.0 // Olhando para a esquerda
+            vaca3.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.25)))
+            gameLayer.addChild(vaca3)
+            cowNodes.append(vaca3)
+        }
     }
     
-    private func setupUFOAnimation() {
-        guard discoNode != nil else { return }
+    // MARK: - Spawning de OVNIs & Game Loop
+    func startSpawningUFOs() {
+        stopSpawningUFOs()
+        clearAllUFOs()
         
-        // Animação Procedural 1: Efeito Pairar / Flutuação de Gravidade Zero
-        let hoverUp = SKAction.moveBy(x: 0, y: 16, duration: 1.8)
-        hoverUp.timingMode = .easeInEaseOut
-        let hoverDown = SKAction.moveBy(x: 0, y: -16, duration: 1.8)
-        hoverDown.timingMode = .easeInEaseOut
-        let hoverSequence = SKAction.sequence([hoverUp, hoverDown])
-        let repeatHover = SKAction.repeatForever(hoverSequence)
-        
-        // Animação Procedural 2: Inclinação sutil de flutuação no ar
-        let tiltRight = SKAction.rotate(toAngle: 0.04, duration: 2.2)
-        tiltRight.timingMode = .easeInEaseOut
-        let tiltLeft = SKAction.rotate(toAngle: -0.04, duration: 2.2)
-        tiltLeft.timingMode = .easeInEaseOut
-        let tiltSequence = SKAction.sequence([tiltRight, tiltLeft])
-        let repeatTilt = SKAction.repeatForever(tiltSequence)
-        
-        let groupAnimation = SKAction.group([repeatHover, repeatTilt])
-        discoNode.run(groupAnimation, withKey: "ufoHover")
+        // Spawn inicial após 1.5s
+        spawnTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { [weak self] _ in
+            self?.spawnRandomAbduction()
+        }
+        // Primeira nave imediata
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.spawnRandomAbduction()
+        }
     }
     
-    private func setupAbductionBeam() {
-        guard discoNode != nil else { return }
+    func stopSpawningUFOs() {
+        spawnTimer?.invalidate()
+        spawnTimer = nil
+    }
+    
+    private func clearAllUFOs() {
+        for (_, group) in activeNodesMap {
+            group.ufoNode.removeFromParent()
+            group.abductionTimer?.invalidate()
+        }
+        activeNodesMap.removeAll()
+        setupCows()
+    }
+    
+    private func spawnRandomAbduction() {
+        guard let viewModel = viewModel, viewModel.gameState == .playing else { return }
         
-        // Desenha um Feixe Trator de Abdução (Cone Neon Ciano/Verde)
+        // Seleciona uma vaca que não esteja sendo abduzida atualmente
+        let busyCowNodes = activeNodesMap.values.map { $0.cowNode }
+        let availableCowIndices = cowNodes.enumerated().compactMap { (index, node) in
+            busyCowNodes.contains(node) ? nil : index
+        }
+        
+        guard let chosenCowIndex = availableCowIndices.randomElement() else { return }
+        let cowNode = cowNodes[chosenCowIndex]
+        
+        // Sorteia um gesto dos 6 disponíveis
+        guard let randomGesture = GestureType.allCases.randomElement() else { return }
+        
+        let targetId = UUID()
+        let duration: TimeInterval = 4.5
+        let target = AbductionTarget(
+            id: targetId,
+            gestureRequired: randomGesture,
+            timeRemaining: duration,
+            totalDuration: duration,
+            cowIndex: chosenCowIndex
+        )
+        
+        viewModel.registerAbduction(target)
+        createAbductionNodes(for: target, cowNode: cowNode)
+    }
+    
+    private func createAbductionNodes(for target: AbductionTarget, cowNode: SKSpriteNode) {
+        let ufoTex = SKTexture(imageNamed: "DiscoVoador")
+        ufoTex.filteringMode = .nearest
+        
+        let ufoNode = SKSpriteNode(texture: ufoTex)
+        ufoNode.zPosition = 5
+        ufoNode.setScale(0.8)
+        
+        // Posiciona o OVNI acima da vaca escolhida
+        let ufoTargetY: CGFloat = 220.0
+        let cowOrigPos = cowNode.position
+        ufoNode.position = CGPoint(x: cowOrigPos.x, y: 700.0) // Começa no alto fora da tela
+        
+        // Feixe Trator (Cone Neon)
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: -30, y: -20))
-        path.addLine(to: CGPoint(x: 30, y: -20))
-        path.addLine(to: CGPoint(x: 140, y: -450))
-        path.addLine(to: CGPoint(x: -140, y: -450))
+        path.move(to: CGPoint(x: -25, y: -15))
+        path.addLine(to: CGPoint(x: 25, y: -15))
+        path.addLine(to: CGPoint(x: 120, y: -480))
+        path.addLine(to: CGPoint(x: -120, y: -480))
         path.closeSubpath()
         
-        beamNode = SKShapeNode(path: path)
-        beamNode.fillColor = SKColor(red: 0.3, green: 0.95, blue: 0.8, alpha: 0.35)
-        beamNode.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 0.9, alpha: 0.7)
+        let beamNode = SKShapeNode(path: path)
+        beamNode.fillColor = SKColor(red: 0.3, green: 0.95, blue: 0.8, alpha: 0.4)
+        beamNode.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 0.9, alpha: 0.75)
         beamNode.lineWidth = 2.0
-        beamNode.zPosition = -1 // Atrás da estrutura metálica do disco
+        beamNode.zPosition = -1
+        ufoNode.addChild(beamNode)
         
-        discoNode.addChild(beamNode)
+        // Animação de pulso neon no feixe
+        let fadePulse = SKAction.repeatForever(SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.25, duration: 0.5),
+            SKAction.fadeAlpha(to: 0.55, duration: 0.5)
+        ]))
+        beamNode.run(fadePulse)
         
-        // Animação Neon de Pulso de Luz
-        let fadeLess = SKAction.fadeAlpha(to: 0.2, duration: 0.7)
-        let fadeMore = SKAction.fadeAlpha(to: 0.45, duration: 0.7)
-        let pulseSequence = SKAction.sequence([fadeLess, fadeMore])
-        let repeatPulse = SKAction.repeatForever(pulseSequence)
-        beamNode.run(repeatPulse, withKey: "beamPulse")
+        // Badge do Gesto em cima do OVNI
+        let badgeContainer = SKNode()
+        badgeContainer.position = CGPoint(x: 0, y: 75)
+        
+        let bgShape = SKShapeNode(circleOfRadius: 28)
+        bgShape.fillColor = SKColor.black.withAlphaComponent(0.7)
+        bgShape.strokeColor = SKColor.cyan
+        bgShape.lineWidth = 2.5
+        badgeContainer.addChild(bgShape)
+        
+        let labelNode = SKLabelNode(text: gestureSymbol(for: target.gestureRequired))
+        labelNode.fontName = "AvenirNext-Bold"
+        labelNode.fontSize = 24
+        labelNode.fontColor = .white
+        labelNode.verticalAlignmentMode = .center
+        labelNode.horizontalAlignmentMode = .center
+        badgeContainer.addChild(labelNode)
+        
+        ufoNode.addChild(badgeContainer)
+        gameLayer.addChild(ufoNode)
+        
+        // Animação 1: Entrada do OVNI descendo suavemente
+        let enterAction = SKAction.moveTo(y: ufoTargetY, duration: 0.8)
+        enterAction.timingMode = .easeOut
+        ufoNode.run(enterAction)
+        
+        // Animação 2: Vaca flutuando para cima
+        let liftCowAction = SKAction.moveBy(x: 0, y: 260, duration: target.totalDuration)
+        cowNode.run(liftCowAction, withKey: "abductionLift")
+        
+        // Timer da Abdução
+        let timer = Timer.scheduledTimer(withTimeInterval: target.totalDuration, repeats: false) { [weak self] _ in
+            self?.triggerCowAbducted(targetId: target.id)
+        }
+        
+        let group = AbductionNodeGroup(
+            ufoNode: ufoNode,
+            beamNode: beamNode,
+            badgeNode: badgeContainer,
+            cowNode: cowNode,
+            originalCowPosition: cowOrigPos,
+            abductionTimer: timer
+        )
+        
+        activeNodesMap[target.id] = group
     }
     
+    private func gestureSymbol(for gesture: GestureType) -> String {
+        switch gesture {
+        case .square: return "⏹"
+        case .circle: return "⏺"
+        case .triangle: return "▲"
+        case .lineV: return "V"
+        case .lineZ: return "Z"
+        case .infinite: return "∞"
+        }
+    }
+    
+    // MARK: - Resgate da Vaca (Gesto Correto)
+    func performRescue(targetId: UUID) {
+        guard let group = activeNodesMap[targetId] else { return }
+        
+        group.abductionTimer?.invalidate()
+        group.cowNode.removeAction(forKey: "abductionLift")
+        
+        // 1. Apaga feixe e badge
+        group.beamNode.run(SKAction.fadeOut(withDuration: 0.3))
+        group.badgeNode.run(SKAction.fadeOut(withDuration: 0.3))
+        
+        // 2. OVNI foge rápido subindo para o espaço
+        let escapeAction = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 600, duration: 0.6),
+            SKAction.removeFromParent()
+        ])
+        escapeAction.timingMode = .easeIn
+        group.ufoNode.run(escapeAction)
+        
+        // 3. Vaca cai suavemente de volta ao pasto
+        let dropAction = SKAction.moveTo(y: group.originalCowPosition.y, duration: 0.7)
+        dropAction.timingMode = .easeOut
+        group.cowNode.run(dropAction)
+        
+        activeNodesMap.removeValue(forKey: targetId)
+        viewModel?.onCowRescued(targetId: targetId)
+    }
+    
+    // MARK: - Falha na Abdução (Tempo Esgotado)
+    private func triggerCowAbducted(targetId: UUID) {
+        guard let group = activeNodesMap[targetId] else { return }
+        
+        group.abductionTimer?.invalidate()
+        group.cowNode.removeAction(forKey: "abductionLift")
+        
+        // 1. Vaca encolhe e entra no OVNI
+        let cowNode = group.cowNode
+        let origPos = group.originalCowPosition
+        
+        let cowDisappear = SKAction.sequence([
+            SKAction.group([
+                SKAction.scale(to: 0.1, duration: 0.4),
+                SKAction.fadeOut(withDuration: 0.4)
+            ]),
+            SKAction.run {
+                cowNode.position = origPos
+                cowNode.setScale(1.0)
+                cowNode.alpha = 1.0
+            }
+        ])
+        group.cowNode.run(cowDisappear)
+        
+        // 2. OVNI foge para o espaço com a vaca
+        let ufoFlyAway = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 800, duration: 0.5),
+            SKAction.removeFromParent()
+        ])
+        group.ufoNode.run(ufoFlyAway)
+        
+        activeNodesMap.removeValue(forKey: targetId)
+        viewModel?.onCowAbducted(targetId: targetId)
+    }
+    
+    // MARK: - Posicionamento e Redimensionamento
     func layoutScene() {
         guard ceuNode != nil else { return }
         let targetSize = CowsGameScene.nativeSize
@@ -235,24 +371,8 @@ class CowsGameScene: SKScene {
         
         pastoNode.size = targetSize
         pastoNode.position = .zero
-        
-        // Vaca que anda (lado esquerdo do pasto)
-        if vacaNode != nil {
-            vacaNode.position = CGPoint(x: -200, y: -250)
-        }
-        
-        // Vaca que dorme (lado direito do pasto, parada)
-        if vacaDormindoNode != nil {
-            vacaDormindoNode.position = CGPoint(x: 320, y: -260)
-        }
-        
-        // Disco Voador pairando no céu sobre o centro-esquerdo
-        if discoNode != nil {
-            discoNode.position = CGPoint(x: 0, y: 180)
-        }
     }
     
-    // 2. A Matemática do Aspect Fill Manual (Pixels 100% Nítidos)
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
         guard self.size.width > 0 && self.size.height > 0 else { return }
