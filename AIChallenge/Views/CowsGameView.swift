@@ -2,6 +2,38 @@
 import SwiftUI
 import SpriteKit
 import Vision
+import AVFoundation
+
+// MARK: - Subview Isolada do SpriteKit (Impede re-avaliações da renderização pelo SwiftUI)
+private struct IsolatedSpriteView: View, Equatable {
+    let scene: CowsGameScene
+    
+    static func == (lhs: IsolatedSpriteView, rhs: IsolatedSpriteView) -> Bool {
+        // NUNCA re-avalia o SpriteView por mudanças de estado do SwiftUI (Hand tracking, HUD, etc)
+        return true
+    }
+    
+    var body: some View {
+        SpriteView(scene: scene)
+            .ignoresSafeArea()
+    }
+}
+
+// MARK: - Subview Isolada da Câmera
+private struct IsolatedCameraView: View, Equatable {
+    let session: AVCaptureSession
+    
+    static func == (lhs: IsolatedCameraView, rhs: IsolatedCameraView) -> Bool {
+        return true
+    }
+    
+    var body: some View {
+        CameraPreview(session: session)
+            .scaleEffect(x: -1, y: 1)
+            .ignoresSafeArea()
+            .opacity(0.001)
+    }
+}
 
 struct CowsGameView: View {
     @Binding var isPresented: Bool
@@ -28,24 +60,19 @@ struct CowsGameView: View {
     
     var body: some View {
         ZStack {
-            // Layer 1: Feed da Câmera no fundo (Espelhado horizontalmente igual ao FallingOrbs)
-            CameraPreview(session: viewModel.visionService.captureSession)
-                .scaleEffect(x: -1, y: 1)
-                .ignoresSafeArea()
-                .opacity(0.001) // Oculto sob a arte do jogo para preservar a estética 8-Bit
+            // Layer 1: Feed da Câmera no fundo (Isolado do ciclo de diffing do SwiftUI)
+            IsolatedCameraView(session: viewModel.visionService.captureSession)
             
-            // Layer 2: SpriteKit Game Scene (Cenário Pixel Art + Naves + Vacas)
-            SpriteView(scene: scene)
-                .ignoresSafeArea()
+            // Layer 2: SpriteKit Game Scene (Isolado de re-avaliação do SwiftUI -> 60 FPS Fluidos)
+            IsolatedSpriteView(scene: scene)
             
-            // Layer 3: Overlay do Traçado da Mão & Esqueleto (Alinhado perfeitamente com a Câmera)
+            // Layer 3: Overlay do Traçado da Mão & Esqueleto
             GeometryReader { geometry in
                 ZStack {
                     if viewModel.drawingPathPoints.count > 1 {
                         pathView(in: geometry.size)
                     }
                     
-                    // Esqueleto visual dos pontos da mão
                     ForEach(0..<viewModel.currentHandPoints.count, id: \.self) { index in
                         let convertedPoint = convertNormalizedPoint(viewModel.currentHandPoints[index], in: geometry.size)
                         Circle()
@@ -60,7 +87,6 @@ struct CowsGameView: View {
             // Layer 4: HUD & Controles da UI Superior
             VStack {
                 HStack(alignment: .top) {
-                    // Botão Voltar + Contador de Vidas
                     VStack(alignment: .leading, spacing: 10) {
                         Button(action: {
                             stopGame()
@@ -81,7 +107,6 @@ struct CowsGameView: View {
                     
                     Spacer()
                     
-                    // Banner de Feedback Temporário (Toast)
                     if let feedback = viewModel.feedbackMessage {
                         Text(feedback)
                             .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -97,7 +122,6 @@ struct CowsGameView: View {
                     
                     Spacer()
                     
-                    // Placar + Debug de IA
                     VStack(alignment: .trailing, spacing: 8) {
                         Text("Pontos: \(viewModel.score)")
                             .font(.system(size: 26, weight: .black, design: .rounded))
@@ -262,7 +286,7 @@ struct CowsGameView: View {
         }
     }
     
-    // MARK: - Conversão e Alinhamento Perfeito de Coordenadas (AspectFill Crop Correction)
+    // MARK: - Conversão e Alinhamento Perfeito de Coordenadas
     private func convertNormalizedPoint(_ point: CGPoint, in size: CGSize) -> CGPoint {
         let camAspect: CGFloat = 16.0 / 9.0
         let viewAspect = size.width / size.height

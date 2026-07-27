@@ -9,8 +9,11 @@ class VisionService: NSObject {
     // Callback para emitir o gesto detectado, a posição normalizada do pulso, e a lista de todos os pontos
     var onHandDetected: ((HandGesture, CGPoint, [CGPoint]) -> Void)?
     
-    // Callback contínuo para o CoreML (Sliding Window)
+    // Callback contínuo para o CoreML (Sliding Window - Main Thread)
     var onObservation: ((VNHumanHandPoseObservation) -> Void)?
+    
+    // Callback de alta performance para o CoreML (Background Queue)
+    var onObservationBackground: ((VNHumanHandPoseObservation) -> Void)?
     
     // Callback para limpar o buffer quando a mão sumir
     var onHandLost: (() -> Void)?
@@ -177,6 +180,8 @@ extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
             // A coordenada do pulso para o cursor principal
             // Agora a câmera é espelhada nativamente, então não precisamos mais fazer 1.0 - x
             let normalizedLocation = CGPoint(x: wristLocation.x, y: 1.0 - wristLocation.y)
+            
+            onObservationBackground?(observation)
             
             DispatchQueue.main.async { [weak self] in
                 self?.onHandDetected?(gesture, normalizedLocation, detectedPoints)

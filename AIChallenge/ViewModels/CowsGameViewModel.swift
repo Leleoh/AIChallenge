@@ -75,7 +75,7 @@ class CowsGameViewModel {
     
     // MARK: - Callbacks de Visão & Ingestão Contínua
     private func setupCallbacks() {
-        visionService.onObservation = { [weak self] observation in
+        visionService.onObservationBackground = { [weak self] observation in
             guard let self = self, self.gameState == .playing else { return }
             
             var isPinching = false
@@ -194,22 +194,33 @@ class CowsGameViewModel {
         }
     }
     
+    private let predictionQueue = DispatchQueue(label: "coreml.prediction.queue", qos: .userInteractive)
+    private var isAnalyzing = false
+    
     private func analyzeBuffer(_ buffer: [VNHumanHandPoseObservation]) {
-        do {
-            if let result = try coreMLService.predict(observations: buffer) {
-                DispatchQueue.main.async {
-                    self.lastDetectedGesture = result
-                    self.allProbabilities = result.allProbabilities
-                    
-                    let requiredThreshold = self.thresholdForGesture(result.label)
-                    
-                    if result.confidence >= requiredThreshold {
-                        self.handleGestureRecognized(result)
+        guard !isAnalyzing else { return }
+        isAnalyzing = true
+        
+        predictionQueue.async { [weak self] in
+            guard let self = self else { return }
+            defer { self.isAnalyzing = false }
+            
+            do {
+                if let result = try self.coreMLService.predict(observations: buffer) {
+                    DispatchQueue.main.async {
+                        self.lastDetectedGesture = result
+                        self.allProbabilities = result.allProbabilities
+                        
+                        let requiredThreshold = self.thresholdForGesture(result.label)
+                        
+                        if result.confidence >= requiredThreshold {
+                            self.handleGestureRecognized(result)
+                        }
                     }
                 }
+            } catch {
+                print("Erro no CoreML predict: \(error)")
             }
-        } catch {
-            print("Erro no CoreML predict: \(error)")
         }
     }
     

@@ -56,10 +56,6 @@ class CoreMLService {
                 let x = confidence > 0.0 ? rawX : 0.0
                 let y = Float32(point?.location.y ?? 0.0) // Vision usa bottom-left nativamente, exatamente o que o CoreML espera
                 
-                if i == 0 && v == 0 && !hasLogged {
-                    print("👉 Primeiro valor raw (X do Pulso Manual): \(x)")
-                    hasLogged = true
-                }
                 
                 // C=0 -> X
                 ptr[i * strides[0] + 0 * strides[1] + v * strides[2]] = x
@@ -91,21 +87,11 @@ class CoreMLService {
             }
         }
         
-        // Debug do conteúdo do array:
-        var sum: Float32 = 0.0
-        for i in 0..<(windowSize * 3 * 21) {
-            sum += ptr[i]
-        }
-        print("📊 Soma do Array Manual: \(sum)")
-        
         let input = MagicHandsMLInput(poses: poses)
         let output = try model.prediction(input: input)
         
         let label = output.label
         let prob = output.labelProbabilities[label] ?? 0.0
-        
-        // Debugging no console
-        print("🧠 CoreML Previu: \(label) (\(prob)) | Frames no buffer: \(observations.count)")
         
         return GesturePrediction(label: label, confidence: prob, allProbabilities: output.labelProbabilities)
     }
