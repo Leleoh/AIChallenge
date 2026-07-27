@@ -1,19 +1,8 @@
 {
   "images" : [
     {
-      "filename" : "VacaCaminhando4.png",
-      "idiom" : "universal",
-      "scale" : "1x"
-    },
-    {
-      "filename" : "VacaCaminhando4 1.png",
-      "idiom" : "universal",
-      "scale" : "2x"
-    },
-    {
-      "filename" : "VacaCaminhando4 2.png",
-      "idiom" : "universal",
-      "scale" : "3x"
+      "filename" : "VacaMalhadaAndando4.png",
+      "idiom" : "universal"
     }
   ],
   "info" : {

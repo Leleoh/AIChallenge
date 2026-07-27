@@ -12,6 +12,8 @@ class CowsGameScene: SKScene {
     private var nuvensNode2: SKSpriteNode!
     private var vacaNode: SKSpriteNode!
     private var vacaDormindoNode: SKSpriteNode!
+    private var discoNode: SKSpriteNode!
+    private var beamNode: SKShapeNode!
     
     static let nativeSize = CGSize(width: 1512, height: 850)
     
@@ -28,6 +30,8 @@ class CowsGameScene: SKScene {
         setupCloudParallax()
         setupCowAnimation()
         setupSleepingCowAnimation()
+        setupUFOAnimation()
+        setupAbductionBeam()
     }
     
     private func setupLayers() {
@@ -73,7 +77,7 @@ class CowsGameScene: SKScene {
         if let firstTex = cowTextures.first {
             vacaNode = SKSpriteNode(texture: firstTex)
             vacaNode.zPosition = 4
-            vacaNode.setScale(2.0)
+            vacaNode.setScale(1.0)
             gameLayer.addChild(vacaNode)
         }
         
@@ -88,9 +92,17 @@ class CowsGameScene: SKScene {
         if let firstSleepTex = sleepingTextures.first {
             vacaDormindoNode = SKSpriteNode(texture: firstSleepTex)
             vacaDormindoNode.zPosition = 4
-            vacaDormindoNode.setScale(3.0)
+            vacaDormindoNode.setScale(1.0)
             gameLayer.addChild(vacaDormindoNode)
         }
+        
+        // 7. Disco Voador / OVNI (Z: 5)
+        let discoTex = SKTexture(imageNamed: "DiscoVoador")
+        discoTex.filteringMode = .nearest
+        discoNode = SKSpriteNode(texture: discoTex)
+        discoNode.zPosition = 5
+        discoNode.setScale(0.8)
+        gameLayer.addChild(discoNode)
     }
     
     private func setupCloudParallax() {
@@ -128,11 +140,11 @@ class CowsGameScene: SKScene {
         
         let moveRight = SKAction.moveBy(x: walkDistance, y: 0, duration: walkDuration)
         let flipLeft = SKAction.run { [weak self] in
-            self?.vacaNode.xScale = -abs(self?.vacaNode.xScale ?? 3.0)
+            self?.vacaNode.xScale = -abs(self?.vacaNode.xScale ?? 1.0)
         }
         let moveLeft = SKAction.moveBy(x: -walkDistance, y: 0, duration: walkDuration)
         let flipRight = SKAction.run { [weak self] in
-            self?.vacaNode.xScale = abs(self?.vacaNode.xScale ?? 3.0)
+            self?.vacaNode.xScale = abs(self?.vacaNode.xScale ?? 1.0)
         }
         
         let walkSequence = SKAction.sequence([moveRight, flipLeft, moveLeft, flipRight])
@@ -150,10 +162,59 @@ class CowsGameScene: SKScene {
             sleepingTextures.append(tex)
         }
         
-        // Animação contínua dos 6 frames de sono (cadência mais calma: 0.3s)
         let animateAction = SKAction.animate(with: sleepingTextures, timePerFrame: 0.3)
         let repeatAnimate = SKAction.repeatForever(animateAction)
         vacaDormindoNode.run(repeatAnimate, withKey: "cowSleepAnimation")
+    }
+    
+    private func setupUFOAnimation() {
+        guard discoNode != nil else { return }
+        
+        // Animação Procedural 1: Efeito Pairar / Flutuação de Gravidade Zero
+        let hoverUp = SKAction.moveBy(x: 0, y: 16, duration: 1.8)
+        hoverUp.timingMode = .easeInEaseOut
+        let hoverDown = SKAction.moveBy(x: 0, y: -16, duration: 1.8)
+        hoverDown.timingMode = .easeInEaseOut
+        let hoverSequence = SKAction.sequence([hoverUp, hoverDown])
+        let repeatHover = SKAction.repeatForever(hoverSequence)
+        
+        // Animação Procedural 2: Inclinação sutil de flutuação no ar
+        let tiltRight = SKAction.rotate(toAngle: 0.04, duration: 2.2)
+        tiltRight.timingMode = .easeInEaseOut
+        let tiltLeft = SKAction.rotate(toAngle: -0.04, duration: 2.2)
+        tiltLeft.timingMode = .easeInEaseOut
+        let tiltSequence = SKAction.sequence([tiltRight, tiltLeft])
+        let repeatTilt = SKAction.repeatForever(tiltSequence)
+        
+        let groupAnimation = SKAction.group([repeatHover, repeatTilt])
+        discoNode.run(groupAnimation, withKey: "ufoHover")
+    }
+    
+    private func setupAbductionBeam() {
+        guard discoNode != nil else { return }
+        
+        // Desenha um Feixe Trator de Abdução (Cone Neon Ciano/Verde)
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: -30, y: -20))
+        path.addLine(to: CGPoint(x: 30, y: -20))
+        path.addLine(to: CGPoint(x: 140, y: -450))
+        path.addLine(to: CGPoint(x: -140, y: -450))
+        path.closeSubpath()
+        
+        beamNode = SKShapeNode(path: path)
+        beamNode.fillColor = SKColor(red: 0.3, green: 0.95, blue: 0.8, alpha: 0.35)
+        beamNode.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 0.9, alpha: 0.7)
+        beamNode.lineWidth = 2.0
+        beamNode.zPosition = -1 // Atrás da estrutura metálica do disco
+        
+        discoNode.addChild(beamNode)
+        
+        // Animação Neon de Pulso de Luz
+        let fadeLess = SKAction.fadeAlpha(to: 0.2, duration: 0.7)
+        let fadeMore = SKAction.fadeAlpha(to: 0.45, duration: 0.7)
+        let pulseSequence = SKAction.sequence([fadeLess, fadeMore])
+        let repeatPulse = SKAction.repeatForever(pulseSequence)
+        beamNode.run(repeatPulse, withKey: "beamPulse")
     }
     
     func layoutScene() {
@@ -183,6 +244,11 @@ class CowsGameScene: SKScene {
         // Vaca que dorme (lado direito do pasto, parada)
         if vacaDormindoNode != nil {
             vacaDormindoNode.position = CGPoint(x: 320, y: -260)
+        }
+        
+        // Disco Voador pairando no céu sobre o centro-esquerdo
+        if discoNode != nil {
+            discoNode.position = CGPoint(x: 0, y: 180)
         }
     }
     
