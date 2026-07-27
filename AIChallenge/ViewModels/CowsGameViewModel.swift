@@ -12,6 +12,9 @@ class CowsGameViewModel {
     var gameState: GameState = .ready
     var activeAbductions: [AbductionTarget] = []
     
+    // MARK: - Contagem Regressiva Inicial (3, 2, 1)
+    var countdownNumber: Int? = nil
+    
     // MARK: - Hand Tracking & Debug Visual
     var currentHandPoints: [CGPoint] = []
     var drawingPathPoints: [CGPoint] = []
@@ -37,13 +40,14 @@ class CowsGameViewModel {
     var onStartGameTriggered: (() -> Void)?
     
     private var feedbackTimer: Timer?
+    private var countdownTimer: Timer?
     
     init(visionService: VisionService = VisionService()) {
         self.visionService = visionService
         setupCallbacks()
     }
     
-    // MARK: - Fluxo Principal do Jogo
+    // MARK: - Fluxo Principal do Jogo & Contagem
     func startGame() {
         score = 0
         lives = maxLives
@@ -57,11 +61,31 @@ class CowsGameViewModel {
         feedbackMessage = nil
         
         visionService.start()
-        onStartGameTriggered?()
+        runStartCountdown()
+    }
+    
+    private func runStartCountdown() {
+        countdownTimer?.invalidate()
+        countdownNumber = 3
+        
+        var currentCount = 3
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self else { return }
+            currentCount -= 1
+            if currentCount > 0 {
+                self.countdownNumber = currentCount
+            } else {
+                timer.invalidate()
+                self.countdownNumber = nil
+                self.onStartGameTriggered?()
+            }
+        }
     }
     
     func stopGame() {
         gameState = .gameOver
+        countdownTimer?.invalidate()
+        countdownNumber = nil
         visionService.stop()
         observationBuffer.removeAll()
         currentPinchBuffer.removeAll()
@@ -89,20 +113,17 @@ class CowsGameViewModel {
                 let dy = thumbPoint.location.y - indexPoint.location.y
                 let distance = sqrt(dx * dx + dy * dy)
                 
-                // Exige que os dedos encostem (< 0.045)
                 isPinching = distance < 0.045
                 
                 DispatchQueue.main.async {
                     self.isPinchingActive = isPinching
                     if isPinching {
-                        // Inverte X e Y para espelhamento perfeito igual ao FallingOrbs
                         let mirroredPoint = CGPoint(x: 1.0 - indexPoint.location.x, y: 1.0 - indexPoint.location.y)
                         self.drawingPathPoints.append(mirroredPoint)
                         if self.drawingPathPoints.count > 60 {
                             self.drawingPathPoints.removeFirst()
                         }
                     } else {
-                        // Soltou a pinça -> Limpa o traçado
                         if !self.drawingPathPoints.isEmpty {
                             self.drawingPathPoints.removeAll()
                         }
@@ -168,7 +189,6 @@ class CowsGameViewModel {
         }
     }
     
-    /// Redimensiona um buffer de N frames para exatamente 60 frames
     private func resampleToWindowSize(_ buffer: [VNHumanHandPoseObservation], targetSize: Int = 60) -> [VNHumanHandPoseObservation] {
         guard !buffer.isEmpty else { return [] }
         if buffer.count == targetSize { return buffer }
@@ -226,9 +246,8 @@ class CowsGameViewModel {
     
     // MARK: - Processamento de Resgate
     func handleGestureRecognized(_ prediction: GesturePrediction) {
-        guard gameState == .playing else { return }
+        guard gameState == .playing, countdownNumber == nil else { return }
         
-        // Converte a label prevista pelo CoreML para GestureType
         guard let matchedType = GestureType(rawValue: prediction.label) else { return }
         
         if let targetIndex = activeAbductions.firstIndex(where: { $0.gestureRequired == matchedType && !$0.isRescued && !$0.isAbducted }) {
@@ -259,6 +278,10 @@ class CowsGameViewModel {
         
         if lives <= 0 {
             gameState = .gameOver
+            let currentHigh = UserDefaults.standard.integer(forKey: "cowsHighScore")
+            if score > currentHigh {
+                UserDefaults.standard.set(score, forKey: "cowsHighScore")
+            }
         }
     }
     

@@ -16,7 +16,7 @@ struct HomeView: View {
             } else if isFallingOrbsMode {
                 FallingOrbsGameView(isPresented: $isFallingOrbsMode)
             } else if isCowsMode {
-                CowsGameView(isPresented: $isCowsMode)
+                CowsGameMenuView(isPresented: $isCowsMode)
             } else {
                 VStack(spacing: 20) {
                     Text("Magic Therapy")
@@ -30,12 +30,12 @@ struct HomeView: View {
                     Button(action: {
                         isCowsMode = true
                     }) {
-                        Text("🐮 Modo Abdução 8-Bit (SpriteKit)")
+                        Text("🛸 M.O.O.V.N.I. (Alien Abduction)")
                             .font(.title2)
                             .bold()
                             .padding()
                             .frame(width: 340)
-                            .background(Color.orange)
+                            .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(15)
                     }

@@ -136,7 +136,31 @@ struct CowsGameView: View {
                 Spacer()
             }
             
-            // Layer 5: Modal de Game Over
+            // Layer 5: Overlay de Contagem Regressiva (3, 2, 1)
+            if let count = viewModel.countdownNumber {
+                ZStack {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 12) {
+                        Text("\(count)")
+                            .font(.system(size: 140, weight: .black, design: .rounded))
+                            .foregroundColor(.yellow)
+                            .shadow(color: .orange, radius: 12)
+                            .scaleEffect(1.1)
+                            .transition(.scale.combined(with: .opacity))
+                            .animation(.spring(), value: count)
+                        
+                        Text("PREPARE-SE PARA O RESGATE!")
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.white)
+                            .shadow(radius: 5)
+                    }
+                }
+            }
+            
+            // Layer 6: Modal de Game Over
             if viewModel.gameState == .gameOver {
                 gameOverOverlayView
             }

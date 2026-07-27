@@ -10,6 +10,7 @@ class CowsGameScene: SKScene {
     private var pastoNode: SKSpriteNode!
     private var nuvensNode1: SKSpriteNode!
     private var nuvensNode2: SKSpriteNode!
+    private var dayNightOverlayNode: SKSpriteNode!
     
     // Texturas Pré-carregadas para Alta Performance
     private var ufoTexture: SKTexture!
@@ -23,10 +24,12 @@ class CowsGameScene: SKScene {
     // Mapeamento de abduções ativas na cena (Target ID -> Nós da cena)
     private struct AbductionNodeGroup {
         let ufoNode: SKSpriteNode
-        let beamNode: SKShapeNode
+        let outerBeamNode: SKShapeNode
+        let innerBeamNode: SKShapeNode
         let badgeNode: SKNode
         let cowNode: SKSpriteNode
-        let originalCowPosition: CGPoint
+        let originalCowPositionY: CGFloat
+        let wasSleeping: Bool
         var abductionTimer: Timer?
     }
     
@@ -37,7 +40,7 @@ class CowsGameScene: SKScene {
     
     private var spawnTimer: Timer?
     
-    // MARK: - FPS & Monitoramento de Desempenho em Tempo Real
+    // MARK: - FPS & Monitoramento de Desempenho
     private var lastUpdateTime: TimeInterval = 0
     private var frameCount: Int = 0
     private var fpsAccumulator: TimeInterval = 0
@@ -47,7 +50,6 @@ class CowsGameScene: SKScene {
         self.anchorPoint = .zero
         self.backgroundColor = SKColor(red: 0.35, green: 0.73, blue: 0.88, alpha: 1.0)
         
-        // Habilita a exibição do FPS e número de nós diretamente na tela do SpriteKit
         view.showsFPS = true
         view.showsNodeCount = true
         
@@ -58,8 +60,10 @@ class CowsGameScene: SKScene {
         layoutScene()
         setupCloudParallax()
         setupCows()
+        resetDayNightCycle()
     }
     
+    // MARK: - Loop de Física & Tracking Dinâmico do OVNI
     override func update(_ currentTime: TimeInterval) {
         if lastUpdateTime == 0 {
             lastUpdateTime = currentTime
@@ -69,6 +73,8 @@ class CowsGameScene: SKScene {
         let deltaTime = currentTime - lastUpdateTime
         lastUpdateTime = currentTime
         
+        let instantFPS = deltaTime > 0 ? (1.0 / deltaTime) : 60.0
+        
         frameCount += 1
         fpsAccumulator += deltaTime
         
@@ -76,6 +82,25 @@ class CowsGameScene: SKScene {
             currentFPS = Double(frameCount) / fpsAccumulator
             frameCount = 0
             fpsAccumulator = 0
+        }
+        
+        if deltaTime > 0.025 {
+            print("⚠️ [FRAME SPIKE LOG] Delta: \(String(format: "%.3f", deltaTime))s | FPS Instantâneo: \(String(format: "%.1f", instantFPS)) | OVNIs: \(activeNodesMap.count)")
+        } else {
+            print("⏱ [FRAME] Delta: \(String(format: "%.3f", deltaTime))s | FPS Instantâneo: \(String(format: "%.1f", instantFPS))")
+        }
+        
+        // Ativação Dinâmica do Ciclo de Noite a partir de 1000 Pontos
+        if let viewModel = viewModel, viewModel.score >= 1000, !isDayNightCycleActive {
+            isDayNightCycleActive = true
+            startSlowDayNightCycle()
+        }
+        
+        // Target Tracking: Os OVNIs acompanham a posição X das vacas que continuam caminhando
+        for (_, group) in activeNodesMap {
+            let cowCurrentX = group.cowNode.position.x
+            let diffX = cowCurrentX - group.ufoNode.position.x
+            group.ufoNode.position.x += diffX * 0.08
         }
     }
     
@@ -139,6 +164,12 @@ class CowsGameScene: SKScene {
         pastoNode = SKSpriteNode(texture: pastoTex)
         pastoNode.zPosition = 3
         gameLayer.addChild(pastoNode)
+        
+        // Camada de Filtro de Luz para o Ciclo Dia / Noite (Entre o pasto e as vacas/OVNIs)
+        dayNightOverlayNode = SKSpriteNode(color: SKColor(red: 0.05, green: 0.08, blue: 0.3, alpha: 0.0), size: CowsGameScene.nativeSize)
+        dayNightOverlayNode.position = .zero
+        dayNightOverlayNode.zPosition = 3.5
+        gameLayer.addChild(dayNightOverlayNode)
     }
     
     private func setupCloudParallax() {
@@ -157,16 +188,65 @@ class CowsGameScene: SKScene {
         nuvensNode2.run(repeatAction)
     }
     
+    // MARK: - Ciclo Dinâmico de Dia e Noite (Acionado a partir de 1000 Pontos)
+    private var isDayNightCycleActive = false
+    
+    private func resetDayNightCycle() {
+        isDayNightCycleActive = false
+        dayNightOverlayNode?.removeAllActions()
+        dayNightOverlayNode?.color = SKColor(red: 0.05, green: 0.08, blue: 0.3, alpha: 0.0)
+    }
+    
+    private func startSlowDayNightCycle() {
+        guard dayNightOverlayNode != nil else { return }
+        dayNightOverlayNode.removeAllActions()
+        
+        logEvent("🌅 Ciclo de Noite Iniciado (1000+ Pontos Alcançados!)")
+        
+        // Transição lenta: 45 segundos para Entardecer
+        let toDusk = SKAction.customAction(withDuration: 45.0) { node, elapsedTime in
+            let progress = elapsedTime / 45.0
+            let color = SKColor(red: 0.6 * progress, green: 0.2 * progress, blue: 0.4 * progress, alpha: CGFloat(0.38 * progress))
+            (node as? SKSpriteNode)?.color = color
+        }
+        
+        // Transição lenta: 45 segundos para Noite
+        let toNight = SKAction.customAction(withDuration: 45.0) { node, elapsedTime in
+            let progress = elapsedTime / 45.0
+            let r = 0.6 - (0.55 * progress)
+            let g = 0.2 - (0.12 * progress)
+            let b = 0.4 + (0.1 * progress)
+            let a = 0.38 + (0.24 * progress)
+            (node as? SKSpriteNode)?.color = SKColor(red: r, green: g, blue: b, alpha: CGFloat(a))
+        }
+        
+        let nightHold = SKAction.wait(forDuration: 30.0)
+        
+        // Transição lenta: 45 segundos para o Amanhecer
+        let toDay = SKAction.customAction(withDuration: 45.0) { node, elapsedTime in
+            let progress = elapsedTime / 45.0
+            let a = 0.62 * (1.0 - progress)
+            (node as? SKSpriteNode)?.color = SKColor(red: 0.05, green: 0.08, blue: 0.3, alpha: CGFloat(a))
+        }
+        
+        let dayHold = SKAction.wait(forDuration: 30.0)
+        
+        let fullCycle = SKAction.sequence([toDusk, toNight, nightHold, toDay, dayHold])
+        dayNightOverlayNode.run(SKAction.repeatForever(fullCycle))
+    }
+    
+    // MARK: - Vacas Caminhando Dinamicamente no Pasto
     private func setupCows() {
         cowNodes.forEach { $0.removeFromParent() }
         cowNodes.removeAll()
         
-        // Vaca 1: Malhada Caminhando (Esquerda)
+        // Vaca 1: Malhada Caminhando (Esquerda -> Centro)
         if let firstTex = cow1Textures.first {
             let vaca1 = SKSpriteNode(texture: firstTex)
             vaca1.zPosition = 4
             vaca1.position = CGPoint(x: -350, y: -250)
-            vaca1.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.2)))
+            vaca1.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.18)))
+            vaca1.run(makeWalkSequence(distance: 280, duration: 10.0, node: vaca1), withKey: "walkMovement")
             gameLayer.addChild(vaca1)
             cowNodes.append(vaca1)
         }
@@ -181,16 +261,31 @@ class CowsGameScene: SKScene {
             cowNodes.append(vaca2)
         }
         
-        // Vaca 3: Marrom Caminhando (Direita)
+        // Vaca 3: Marrom Caminhando (Direita -> Centro)
         if let firstBrownTex = brownCowTextures.first {
             let vaca3 = SKSpriteNode(texture: firstBrownTex)
             vaca3.zPosition = 4
             vaca3.position = CGPoint(x: 350, y: -250)
             vaca3.xScale = -1.0
-            vaca3.run(SKAction.repeatForever(SKAction.animate(with: brownCowTextures, timePerFrame: 0.2)))
+            vaca3.run(SKAction.repeatForever(SKAction.animate(with: brownCowTextures, timePerFrame: 0.18)))
+            vaca3.run(makeWalkSequence(distance: -280, duration: 11.0, node: vaca3), withKey: "walkMovement")
             gameLayer.addChild(vaca3)
             cowNodes.append(vaca3)
         }
+    }
+    
+    private func makeWalkSequence(distance: CGFloat, duration: TimeInterval, node: SKSpriteNode) -> SKAction {
+        let move1 = SKAction.moveBy(x: distance, y: 0, duration: duration)
+        let flip1 = SKAction.run { [weak node] in
+            guard let node = node else { return }
+            node.xScale = -node.xScale
+        }
+        let move2 = SKAction.moveBy(x: -distance, y: 0, duration: duration)
+        let flip2 = SKAction.run { [weak node] in
+            guard let node = node else { return }
+            node.xScale = -node.xScale
+        }
+        return SKAction.repeatForever(SKAction.sequence([move1, flip1, move2, flip2]))
     }
     
     // MARK: - Spawning de OVNIs & Game Loop
@@ -221,6 +316,7 @@ class CowsGameScene: SKScene {
         }
         activeNodesMap.removeAll()
         setupCows()
+        resetDayNightCycle()
     }
     
     private func spawnRandomAbduction() {
@@ -261,31 +357,79 @@ class CowsGameScene: SKScene {
         let cowOrigPos = cowNode.position
         ufoNode.position = CGPoint(x: cowOrigPos.x, y: 700.0)
         
-        let path = CGMutablePath()
-        path.move(to: CGPoint(x: -25, y: -15))
-        path.addLine(to: CGPoint(x: 25, y: -15))
-        path.addLine(to: CGPoint(x: 120, y: -480))
-        path.addLine(to: CGPoint(x: -120, y: -480))
-        path.closeSubpath()
+        // Verifica se a vaca escolhida estava dormindo (Vaca Index 1)
+        let isSleepingCow = (target.cowIndex == 1)
+        if isSleepingCow {
+            // A vaca ACORDA! Troca para a animação da vaca em pé/caminhando em pânico
+            cowNode.removeAllActions()
+            cowNode.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.18)))
+        }
         
-        let beamNode = SKShapeNode(path: path)
-        beamNode.fillColor = SKColor(red: 0.3, green: 0.95, blue: 0.8, alpha: 0.4)
-        beamNode.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 0.9, alpha: 0.75)
-        beamNode.lineWidth = 2.0
-        beamNode.zPosition = -1
-        ufoNode.addChild(beamNode)
+        // 1. Feixe Trator Externo Suave (Sem borda rígida)
+        let outerPath = CGMutablePath()
+        outerPath.move(to: CGPoint(x: -32, y: -15))
+        outerPath.addLine(to: CGPoint(x: 32, y: -15))
+        outerPath.addLine(to: CGPoint(x: 140, y: -480))
+        outerPath.addLine(to: CGPoint(x: -140, y: -480))
+        outerPath.closeSubpath()
         
-        let fadePulse = SKAction.repeatForever(SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.25, duration: 0.5),
-            SKAction.fadeAlpha(to: 0.55, duration: 0.5)
+        let outerBeamNode = SKShapeNode(path: outerPath)
+        outerBeamNode.fillColor = SKColor(red: 0.2, green: 0.9, blue: 1.0, alpha: 0.25)
+        outerBeamNode.strokeColor = .clear // Sem borda rígida
+        outerBeamNode.lineWidth = 0
+        outerBeamNode.zPosition = -2
+        ufoNode.addChild(outerBeamNode)
+        
+        // 2. Feixe Trator Interno (Core de Energia Verde Vibrante Suave)
+        let innerPath = CGMutablePath()
+        innerPath.move(to: CGPoint(x: -16, y: -15))
+        innerPath.addLine(to: CGPoint(x: 16, y: -15))
+        innerPath.addLine(to: CGPoint(x: 80, y: -480))
+        innerPath.addLine(to: CGPoint(x: -80, y: -480))
+        innerPath.closeSubpath()
+        
+        let innerBeamNode = SKShapeNode(path: innerPath)
+        innerBeamNode.fillColor = SKColor(red: 0.35, green: 1.0, blue: 0.55, alpha: 0.38)
+        innerBeamNode.strokeColor = .clear // Sem borda rígida
+        innerBeamNode.lineWidth = 0
+        innerBeamNode.zPosition = -1
+        ufoNode.addChild(innerBeamNode)
+        
+        // Animação de Pulso Horizontal & Opacidade Neon Suave
+        let pulseGroup = SKAction.repeatForever(SKAction.sequence([
+            SKAction.group([
+                SKAction.scaleX(to: 1.06, duration: 0.6),
+                SKAction.fadeAlpha(to: 0.45, duration: 0.6)
+            ]),
+            SKAction.group([
+                SKAction.scaleX(to: 0.94, duration: 0.6),
+                SKAction.fadeAlpha(to: 0.18, duration: 0.6)
+            ])
         ]))
-        beamNode.run(fadePulse)
+        outerBeamNode.run(pulseGroup)
         
+        // Animação Orgânica 1: Hover (Gravidade Zero)
+        let hoverUp = SKAction.moveBy(x: 0, y: 12, duration: 1.5)
+        hoverUp.timingMode = .easeInEaseOut
+        let hoverDown = SKAction.moveBy(x: 0, y: -12, duration: 1.5)
+        hoverDown.timingMode = .easeInEaseOut
+        let hoverAction = SKAction.repeatForever(SKAction.sequence([hoverUp, hoverDown]))
+        
+        // Animação Orgânica 2: Tilt (Inclinação Lateral Sutil)
+        let tiltRight = SKAction.rotate(toAngle: 0.05, duration: 1.8)
+        tiltRight.timingMode = .easeInEaseOut
+        let tiltLeft = SKAction.rotate(toAngle: -0.05, duration: 1.8)
+        tiltLeft.timingMode = .easeInEaseOut
+        let tiltAction = SKAction.repeatForever(SKAction.sequence([tiltRight, tiltLeft]))
+        
+        ufoNode.run(SKAction.group([hoverAction, tiltAction]), withKey: "ufoHoverAndTilt")
+        
+        // Badge do Gesto em cima do OVNI
         let badgeContainer = SKNode()
         badgeContainer.position = CGPoint(x: 0, y: 75)
         
         let bgShape = SKShapeNode(circleOfRadius: 28)
-        bgShape.fillColor = SKColor.black.withAlphaComponent(0.7)
+        bgShape.fillColor = SKColor.black.withAlphaComponent(0.75)
         bgShape.strokeColor = SKColor.cyan
         bgShape.lineWidth = 2.5
         badgeContainer.addChild(bgShape)
@@ -314,10 +458,12 @@ class CowsGameScene: SKScene {
         
         let group = AbductionNodeGroup(
             ufoNode: ufoNode,
-            beamNode: beamNode,
+            outerBeamNode: outerBeamNode,
+            innerBeamNode: innerBeamNode,
             badgeNode: badgeContainer,
             cowNode: cowNode,
-            originalCowPosition: cowOrigPos,
+            originalCowPositionY: cowOrigPos.y,
+            wasSleeping: isSleepingCow,
             abductionTimer: timer
         )
         
@@ -344,7 +490,8 @@ class CowsGameScene: SKScene {
         group.abductionTimer?.invalidate()
         group.cowNode.removeAction(forKey: "abductionLift")
         
-        group.beamNode.run(SKAction.fadeOut(withDuration: 0.3))
+        group.outerBeamNode.run(SKAction.fadeOut(withDuration: 0.3))
+        group.innerBeamNode.run(SKAction.fadeOut(withDuration: 0.3))
         group.badgeNode.run(SKAction.fadeOut(withDuration: 0.3))
         
         let escapeAction = SKAction.sequence([
@@ -354,7 +501,21 @@ class CowsGameScene: SKScene {
         escapeAction.timingMode = .easeIn
         group.ufoNode.run(escapeAction)
         
-        let dropAction = SKAction.moveTo(y: group.originalCowPosition.y, duration: 0.7)
+        let wasSleeping = group.wasSleeping
+        let cowNode = group.cowNode
+        let origPosY = group.originalCowPositionY
+        
+        let dropAction = SKAction.sequence([
+            SKAction.moveTo(y: origPosY, duration: 0.7),
+            SKAction.run { [weak self] in
+                guard let self = self else { return }
+                if wasSleeping {
+                    // Retorna à animação dormindo após o resgate
+                    cowNode.removeAllActions()
+                    cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.sleepTextures, timePerFrame: 0.3)))
+                }
+            }
+        ])
         dropAction.timingMode = .easeOut
         group.cowNode.run(dropAction)
         
@@ -371,18 +532,24 @@ class CowsGameScene: SKScene {
         group.abductionTimer?.invalidate()
         group.cowNode.removeAction(forKey: "abductionLift")
         
+        let wasSleeping = group.wasSleeping
         let cowNode = group.cowNode
-        let origPos = group.originalCowPosition
+        let origPosY = group.originalCowPositionY
         
         let cowDisappear = SKAction.sequence([
             SKAction.group([
                 SKAction.scale(to: 0.1, duration: 0.4),
                 SKAction.fadeOut(withDuration: 0.4)
             ]),
-            SKAction.run {
-                cowNode.position = origPos
+            SKAction.run { [weak self] in
+                guard let self = self else { return }
+                cowNode.position.y = origPosY
                 cowNode.setScale(1.0)
                 cowNode.alpha = 1.0
+                if wasSleeping {
+                    cowNode.removeAllActions()
+                    cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.sleepTextures, timePerFrame: 0.3)))
+                }
             }
         ])
         group.cowNode.run(cowDisappear)
@@ -416,6 +583,11 @@ class CowsGameScene: SKScene {
         
         pastoNode.size = targetSize
         pastoNode.position = .zero
+        
+        if dayNightOverlayNode != nil {
+            dayNightOverlayNode.size = targetSize
+            dayNightOverlayNode.position = .zero
+        }
     }
     
     override func didChangeSize(_ oldSize: CGSize) {
