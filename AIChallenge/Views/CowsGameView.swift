@@ -188,6 +188,7 @@ struct CowsGameView: View {
         }
         .onAppear {
             setupGameBridge()
+            SoundService.shared.playBGM(named: "OST", volume: 0.18)
         }
     }
     

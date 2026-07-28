@@ -1,5 +1,6 @@
 // Ref: docs/sdd/CowsAbduction_GameLoop_Spec.md
 import SpriteKit
+import AVFoundation
 
 class CowsGameScene: SKScene {
     // 1. Container Principal de nós (Container Layer)
@@ -33,6 +34,7 @@ class CowsGameScene: SKScene {
         let originalCowPositionY: CGFloat
         let animalType: AnimalType
         var abductionTimer: Timer?
+        var ufoSoundPlayer: AVAudioPlayer?
     }
     
     private enum AnimalType {
@@ -434,6 +436,7 @@ class CowsGameScene: SKScene {
         
         for (_, group) in currentMap {
             group.abductionTimer?.invalidate()
+            group.ufoSoundPlayer?.stop()
             group.ufoNode.removeFromParent()
         }
         
@@ -584,6 +587,8 @@ class CowsGameScene: SKScene {
             self?.triggerCowAbducted(targetId: target.id)
         }
         
+        let ufoSoundPlayer = SoundService.shared.playUfoSFX(volume: 0.5)
+        
         let group = AbductionNodeGroup(
             ufoNode: ufoNode,
             outerBeamNode: outerBeamNode,
@@ -592,7 +597,8 @@ class CowsGameScene: SKScene {
             cowNode: cowNode,
             originalCowPositionY: cowOrigPos.y,
             animalType: animalType,
-            abductionTimer: timer
+            abductionTimer: timer,
+            ufoSoundPlayer: ufoSoundPlayer
         )
         
         activeNodesMap[target.id] = group
@@ -615,6 +621,16 @@ class CowsGameScene: SKScene {
         
         logEvent("🎉 Resgate Efetuado com Sucesso")
         
+        group.ufoSoundPlayer?.stop()
+        SoundService.shared.playSFX(named: "Point1", volume: 0.9)
+        
+        let animalType = group.animalType
+        if animalType == .sleepingCow || animalType == .walkingCow || animalType == .brownCow {
+            SoundService.shared.playSFX(named: "Moo", volume: 0.7)
+        } else {
+            SoundService.shared.playSFX(named: "Pig", volume: 0.7)
+        }
+        
         group.abductionTimer?.invalidate()
         group.cowNode.removeAction(forKey: "abductionLift")
         
@@ -629,7 +645,6 @@ class CowsGameScene: SKScene {
         escapeAction.timingMode = .easeIn
         group.ufoNode.run(escapeAction)
         
-        let animalType = group.animalType
         let cowNode = group.cowNode
         let origPosY = group.originalCowPositionY
         
@@ -659,6 +674,7 @@ class CowsGameScene: SKScene {
         
         logEvent("💥 Tempo Esgotado: Animal Abduzido pelo OVNI")
         
+        group.ufoSoundPlayer?.stop()
         group.abductionTimer?.invalidate()
         group.cowNode.removeAction(forKey: "abductionLift")
         

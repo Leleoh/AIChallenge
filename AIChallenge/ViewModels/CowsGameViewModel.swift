@@ -61,12 +61,14 @@ class CowsGameViewModel {
         feedbackMessage = nil
         
         visionService.start()
+        SoundService.shared.playBGM(named: "OST", volume: 0.18)
         runStartCountdown()
     }
     
     private func runStartCountdown() {
         countdownTimer?.invalidate()
         countdownNumber = 3
+        SoundService.shared.playSFX(named: "Countdown", volume: 0.8)
         
         var currentCount = 3
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
@@ -96,6 +98,7 @@ class CowsGameViewModel {
         gameState = .ready
         countdownTimer?.invalidate()
         countdownNumber = nil
+        SoundService.shared.restartBGM(named: "OST", volume: 0.18)
         observationBuffer.removeAll()
         currentPinchBuffer.removeAll()
         drawingPathPoints.removeAll()
@@ -106,6 +109,7 @@ class CowsGameViewModel {
         gameState = .gameOver
         countdownTimer?.invalidate()
         countdownNumber = nil
+        SoundService.shared.stopBGM()
         visionService.stop()
         observationBuffer.removeAll()
         currentPinchBuffer.removeAll()
