@@ -28,6 +28,7 @@ class CowsGameViewModel {
     private var coreMLService = CoreMLService.shared
     
     private let windowSize = 60
+    private let bufferLock = NSRecursiveLock()
     private var observationBuffer: [VNHumanHandPoseObservation] = []
     private var currentPinchBuffer: [VNHumanHandPoseObservation] = []
     private var wasPinching: Bool = false
@@ -56,8 +57,13 @@ class CowsGameViewModel {
         lastDetectedGesture = nil
         allProbabilities.removeAll()
         drawingPathPoints.removeAll()
+        
+        bufferLock.lock()
         currentPinchBuffer.removeAll()
+        observationBuffer.removeAll()
         wasPinching = false
+        bufferLock.unlock()
+        
         feedbackMessage = nil
         
         visionService.start()
@@ -99,8 +105,13 @@ class CowsGameViewModel {
         countdownTimer?.invalidate()
         countdownNumber = nil
         SoundService.shared.restartBGM(named: "OST", volume: 0.18)
+        
+        bufferLock.lock()
         observationBuffer.removeAll()
         currentPinchBuffer.removeAll()
+        wasPinching = false
+        bufferLock.unlock()
+        
         drawingPathPoints.removeAll()
         currentHandPoints.removeAll()
     }
@@ -111,8 +122,13 @@ class CowsGameViewModel {
         countdownNumber = nil
         SoundService.shared.stopBGM()
         visionService.stop()
+        
+        bufferLock.lock()
         observationBuffer.removeAll()
         currentPinchBuffer.removeAll()
+        wasPinching = false
+        bufferLock.unlock()
+        
         drawingPathPoints.removeAll()
         currentHandPoints.removeAll()
     }
@@ -155,7 +171,10 @@ class CowsGameViewModel {
                 }
             }
             
-            // 2. Buffer da Pinça e Disparo Instantâneo ao Soltar
+            // 2. Trava de Segurança (Thread-Safe Buffer Operations)
+            var readyBuffer: [VNHumanHandPoseObservation]? = nil
+            
+            self.bufferLock.lock()
             if isPinching {
                 self.currentPinchBuffer.append(observation)
             } else {
@@ -166,6 +185,22 @@ class CowsGameViewModel {
                 self.currentPinchBuffer.removeAll()
             }
             self.wasPinching = isPinching
+            
+            self.framesWithoutHand = 0
+            self.observationBuffer.append(observation)
+            
+            if self.observationBuffer.count > self.windowSize {
+                self.observationBuffer.removeFirst()
+            }
+            
+            if self.observationBuffer.count == self.windowSize {
+                self.predictionFrameCounter += 1
+                if self.predictionFrameCounter >= 3 {
+                    self.predictionFrameCounter = 0
+                    readyBuffer = self.observationBuffer
+                }
+            }
+            self.bufferLock.unlock()
             
             // 3. Esqueleto da Mão (Pontos para a UI)
             if let allPoints = try? observation.recognizedPoints(.all) {
@@ -180,20 +215,9 @@ class CowsGameViewModel {
                 }
             }
             
-            self.framesWithoutHand = 0
-            self.observationBuffer.append(observation)
-            
-            if self.observationBuffer.count > self.windowSize {
-                self.observationBuffer.removeFirst()
-            }
-            
-            // 4. Predição contínua fluída em background
-            if self.observationBuffer.count == self.windowSize {
-                self.predictionFrameCounter += 1
-                if self.predictionFrameCounter >= 3 {
-                    self.predictionFrameCounter = 0
-                    self.analyzeBuffer(self.observationBuffer)
-                }
+            // 4. Predição contínua fluída em background fora da trava
+            if let readyBuffer = readyBuffer {
+                self.analyzeBuffer(readyBuffer)
             }
         }
         
@@ -201,9 +225,12 @@ class CowsGameViewModel {
             guard let self = self else { return }
             self.framesWithoutHand += 1
             if self.framesWithoutHand > 30 {
+                self.bufferLock.lock()
                 self.observationBuffer.removeAll()
                 self.currentPinchBuffer.removeAll()
                 self.wasPinching = false
+                self.bufferLock.unlock()
+                
                 DispatchQueue.main.async {
                     self.currentHandPoints.removeAll()
                     self.drawingPathPoints.removeAll()
@@ -281,7 +308,21 @@ class CowsGameViewModel {
             onRescueTriggered?(target.id)
             
             score += 100
-            showFeedback("Vaca Resgatada! 🎉 +100 pts")
+            
+            let isPig = (target.cowIndex == 2 || target.cowIndex == 4)
+            if isPig {
+                showFeedback("Porquinho Resgatado! 🐷 +100 pts")
+            } else {
+                showFeedback("Vaca Resgatada! 🐮 +100 pts")
+            }
+            
+            // Limpa os buffers para evitar que o mesmo gesto auto-resgate a próxima nave que surgir em seguida
+            bufferLock.lock()
+            observationBuffer.removeAll()
+            currentPinchBuffer.removeAll()
+            wasPinching = false
+            bufferLock.unlock()
+            lastDetectedGesture = nil
         }
     }
     
@@ -293,12 +334,16 @@ class CowsGameViewModel {
     func onCowAbducted(targetId: UUID) {
         guard gameState == .playing else { return }
         
+        let target = activeAbductions.first(where: { $0.id == targetId })
         if let index = activeAbductions.firstIndex(where: { $0.id == targetId }) {
             activeAbductions[index].isAbducted = true
         }
         
         lives = max(0, lives - 1)
-        showFeedback("Vaca Abduzida! 🛸 -1 Vida")
+        
+        let isPig = (target?.cowIndex == 2 || target?.cowIndex == 4)
+        let animalName = isPig ? "Porquinho" : "Vaca"
+        showFeedback("\(animalName) Abduzido(a)! 🛸 -1 Vida")
         
         if lives <= 0 {
             gameState = .gameOver

@@ -18,6 +18,7 @@ class CowsGameScene: SKScene {
     private var cow1Textures: [SKTexture] = []
     private var sleepTextures: [SKTexture] = []
     private var brownCowTextures: [SKTexture] = []
+    private var brownSleepTextures: [SKTexture] = []
     private var pigWalkTextures: [SKTexture] = []
     private var pigRestTextures: [SKTexture] = []
     
@@ -41,6 +42,7 @@ class CowsGameScene: SKScene {
         case walkingCow
         case sleepingCow
         case brownCow
+        case brownSleepingCow
         case sleepingPig
         case walkingPig
     }
@@ -51,6 +53,7 @@ class CowsGameScene: SKScene {
     static let nativeSize = CGSize(width: 1512, height: 850)
     
     private var spawnTimer: Timer?
+    private var behaviorTimer: Timer?
     
     // MARK: - FPS & Monitoramento de Desempenho
     private var lastUpdateTime: TimeInterval = 0
@@ -74,6 +77,7 @@ class CowsGameScene: SKScene {
         setupCows()
         resetDayNightCycle()
         showMenuState()
+        startAnimalBehaviorLoop()
     }
     
     // MARK: - Estado de Menu Decorativo Contínuo
@@ -165,12 +169,6 @@ class CowsGameScene: SKScene {
             fpsAccumulator = 0
         }
         
-        if deltaTime > 0.025 {
-            print("⚠️ [FRAME SPIKE LOG] Delta: \(String(format: "%.3f", deltaTime))s | FPS Instantâneo: \(String(format: "%.1f", instantFPS)) | OVNIs: \(activeNodesMap.count)")
-        } else {
-            print("⏱ [FRAME] Delta: \(String(format: "%.3f", deltaTime))s | FPS Instantâneo: \(String(format: "%.1f", instantFPS))")
-        }
-        
         // Ativação Dinâmica do Ciclo de Noite a partir de 1000 Pontos
         if let viewModel = viewModel, viewModel.score >= 1000, !isDayNightCycleActive {
             isDayNightCycleActive = true
@@ -216,6 +214,12 @@ class CowsGameScene: SKScene {
             return tex
         }
         
+        brownSleepTextures = (1...6).map {
+            let tex = SKTexture(imageNamed: "VacaMarromDormindo\($0)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+        
         pigWalkTextures = (1...5).map {
             let tex = SKTexture(imageNamed: "PorcoAndando\($0)")
             tex.filteringMode = .nearest
@@ -232,6 +236,7 @@ class CowsGameScene: SKScene {
         allTex.append(contentsOf: cow1Textures)
         allTex.append(contentsOf: sleepTextures)
         allTex.append(contentsOf: brownCowTextures)
+        allTex.append(contentsOf: brownSleepTextures)
         allTex.append(contentsOf: pigWalkTextures)
         allTex.append(contentsOf: pigRestTextures)
         
@@ -334,7 +339,7 @@ class CowsGameScene: SKScene {
         dayNightOverlayNode.run(SKAction.repeatForever(fullCycle))
     }
     
-    // MARK: - Animais Caminhando e Descansando no Pasto
+    // MARK: - Animais Caminhando e Descansando no Pasto (Variedade & Variantes)
     private func setupCows() {
         cowNodes.forEach { $0.removeFromParent() }
         cowNodes.removeAll()
@@ -343,9 +348,9 @@ class CowsGameScene: SKScene {
         if let firstTex = cow1Textures.first {
             let vaca1 = SKSpriteNode(texture: firstTex)
             vaca1.zPosition = 4
-            vaca1.position = CGPoint(x: -450, y: -250)
+            vaca1.position = CGPoint(x: -480, y: -250)
             vaca1.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.18)))
-            vaca1.run(makeWalkSequence(distance: 260, duration: 10.0, node: vaca1), withKey: "walkMovement")
+            vaca1.run(makeWalkSequence(distance: 220, duration: 9.0, node: vaca1), withKey: "walkMovement")
             gameLayer.addChild(vaca1)
             cowNodes.append(vaca1)
         }
@@ -354,44 +359,100 @@ class CowsGameScene: SKScene {
         if let firstSleepTex = sleepTextures.first {
             let vaca2 = SKSpriteNode(texture: firstSleepTex)
             vaca2.zPosition = 4
-            vaca2.position = CGPoint(x: -180, y: -260)
+            vaca2.position = CGPoint(x: -260, y: -260)
             vaca2.run(SKAction.repeatForever(SKAction.animate(with: sleepTextures, timePerFrame: 0.3)))
             gameLayer.addChild(vaca2)
             cowNodes.append(vaca2)
         }
         
-        // 2: Porco Deitado Descansando
+        // 2: Vaca Marrom Dormindo (NOVA VARIANTE!)
+        if let firstBrownSleep = brownSleepTextures.first {
+            let vacaMarromDormindo = SKSpriteNode(texture: firstBrownSleep)
+            vacaMarromDormindo.zPosition = 4
+            vacaMarromDormindo.position = CGPoint(x: -60, y: -260)
+            vacaMarromDormindo.run(SKAction.repeatForever(SKAction.animate(with: brownSleepTextures, timePerFrame: 0.28)))
+            gameLayer.addChild(vacaMarromDormindo)
+            cowNodes.append(vacaMarromDormindo)
+        }
+        
+        // 3: Porco Deitado Descansando
         if let firstPigRest = pigRestTextures.first {
             let porco1 = SKSpriteNode(texture: firstPigRest)
             porco1.zPosition = 4
-            porco1.position = CGPoint(x: 80, y: -265)
+            porco1.position = CGPoint(x: 140, y: -265)
             porco1.run(SKAction.repeatForever(SKAction.animate(with: pigRestTextures, timePerFrame: 0.25)))
             gameLayer.addChild(porco1)
             cowNodes.append(porco1)
         }
         
-        // 3: Vaca Marrom Caminhando
+        // 4: Vaca Marrom Caminhando
         if let firstBrownTex = brownCowTextures.first {
             let vaca3 = SKSpriteNode(texture: firstBrownTex)
             vaca3.zPosition = 4
-            vaca3.position = CGPoint(x: 320, y: -250)
+            vaca3.position = CGPoint(x: 340, y: -250)
             vaca3.xScale = -1.0
             vaca3.run(SKAction.repeatForever(SKAction.animate(with: brownCowTextures, timePerFrame: 0.18)))
-            vaca3.run(makeWalkSequence(distance: -220, duration: 11.0, node: vaca3), withKey: "walkMovement")
+            vaca3.run(makeWalkSequence(distance: -180, duration: 10.0, node: vaca3), withKey: "walkMovement")
             gameLayer.addChild(vaca3)
             cowNodes.append(vaca3)
         }
         
-        // 4: Porco Andando
+        // 5: Porco Andando
         if let firstPigWalk = pigWalkTextures.first {
             let porco2 = SKSpriteNode(texture: firstPigWalk)
             porco2.zPosition = 4
             porco2.position = CGPoint(x: 520, y: -255)
             porco2.xScale = -1.0
             porco2.run(SKAction.repeatForever(SKAction.animate(with: pigWalkTextures, timePerFrame: 0.16)))
-            porco2.run(makeWalkSequence(distance: -200, duration: 9.0, node: porco2), withKey: "walkMovement")
+            porco2.run(makeWalkSequence(distance: -160, duration: 8.0, node: porco2), withKey: "walkMovement")
             gameLayer.addChild(porco2)
             cowNodes.append(porco2)
+        }
+    }
+    
+    // MARK: - Alternância Dinâmica de Comportamento (Andar <-> Deitar)
+    private func startAnimalBehaviorLoop() {
+        behaviorTimer?.invalidate()
+        behaviorTimer = Timer.scheduledTimer(withTimeInterval: 12.0, repeats: true) { [weak self] _ in
+            self?.toggleRandomAnimalBehavior()
+        }
+    }
+    
+    private func toggleRandomAnimalBehavior() {
+        guard !cowNodes.isEmpty else { return }
+        
+        // Seleciona um animal descansando para levantar e dar uns passos por alguns segundos
+        let restingIndices = [1, 2, 3] // Vaca Malhada Dormindo, Vaca Marrom Dormindo, Porco Deitado
+        if let chosenIndex = restingIndices.randomElement(), chosenIndex < cowNodes.count {
+            let node = cowNodes[chosenIndex]
+            
+            // Só altera se não estiver sendo abduzido no momento
+            let busyCowNodes = activeNodesMap.values.map { $0.cowNode }
+            if !busyCowNodes.contains(node) {
+                node.removeAllActions()
+                
+                let walkTextures: [SKTexture]
+                if chosenIndex == 1 { walkTextures = cow1Textures }
+                else if chosenIndex == 2 { walkTextures = brownCowTextures }
+                else { walkTextures = pigWalkTextures }
+                
+                node.run(SKAction.repeatForever(SKAction.animate(with: walkTextures, timePerFrame: 0.18)), withKey: "anim")
+                node.run(makeWalkSequence(distance: 80, duration: 5.0, node: node), withKey: "walkMovement")
+                
+                // Volta a descansar após 6 segundos
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self, weak node] in
+                    guard let self = self, let node = node else { return }
+                    let currentlyBusy = self.activeNodesMap.values.map { $0.cowNode }
+                    if !currentlyBusy.contains(node) {
+                        node.removeAllActions()
+                        let restTex: [SKTexture]
+                        if chosenIndex == 1 { restTex = self.sleepTextures }
+                        else if chosenIndex == 2 { restTex = self.brownSleepTextures }
+                        else { restTex = self.pigRestTextures }
+                        node.run(SKAction.repeatForever(SKAction.animate(with: restTex, timePerFrame: 0.28)))
+                    }
+                }
+            }
         }
     }
     
@@ -415,7 +476,17 @@ class CowsGameScene: SKScene {
         
         logEvent("▶️ Spawner de OVNIs Iniciado")
         
-        spawnTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { [weak self] _ in
+        // Frequência de Spawning baseada na pontuação atual do jogador (Dificuldade Progressiva)
+        let interval: TimeInterval
+        if let score = viewModel?.score, score >= 700 {
+            interval = 2.5
+        } else if let score = viewModel?.score, score >= 300 {
+            interval = 3.0
+        } else {
+            interval = 3.5
+        }
+        
+        spawnTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.spawnRandomAbduction()
         }
         
@@ -458,7 +529,17 @@ class CowsGameScene: SKScene {
         guard let randomGesture = GestureType.allCases.randomElement() else { return }
         
         let targetId = UUID()
-        let duration: TimeInterval = 4.5
+        
+        // Tempo de Abdução reduz conforme a pontuação sobe (Dificuldade Progressiva)
+        let duration: TimeInterval
+        if viewModel.score >= 700 {
+            duration = 3.2
+        } else if viewModel.score >= 300 {
+            duration = 3.8
+        } else {
+            duration = 4.5
+        }
+        
         let target = AbductionTarget(
             id: targetId,
             gestureRequired: randomGesture,
@@ -486,15 +567,19 @@ class CowsGameScene: SKScene {
         let animalType: AnimalType
         switch target.cowIndex {
         case 1: animalType = .sleepingCow
-        case 2: animalType = .sleepingPig
-        case 3: animalType = .brownCow
-        case 4: animalType = .walkingPig
+        case 2: animalType = .brownSleepingCow
+        case 3: animalType = .sleepingPig
+        case 4: animalType = .brownCow
+        case 5: animalType = .walkingPig
         default: animalType = .walkingCow
         }
         
         if animalType == .sleepingCow {
             cowNode.removeAllActions()
             cowNode.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.18)))
+        } else if animalType == .brownSleepingCow {
+            cowNode.removeAllActions()
+            cowNode.run(SKAction.repeatForever(SKAction.animate(with: brownCowTextures, timePerFrame: 0.18)))
         } else if animalType == .sleepingPig {
             cowNode.removeAllActions()
             cowNode.run(SKAction.repeatForever(SKAction.animate(with: pigWalkTextures, timePerFrame: 0.16)))
@@ -625,7 +710,7 @@ class CowsGameScene: SKScene {
         SoundService.shared.playSFX(named: "Point1", volume: 0.9)
         
         let animalType = group.animalType
-        if animalType == .sleepingCow || animalType == .walkingCow || animalType == .brownCow {
+        if animalType == .sleepingCow || animalType == .walkingCow || animalType == .brownCow || animalType == .brownSleepingCow {
             SoundService.shared.playSFX(named: "Moo", volume: 0.7)
         } else {
             SoundService.shared.playSFX(named: "Pig", volume: 0.7)
@@ -655,6 +740,9 @@ class CowsGameScene: SKScene {
                 if animalType == .sleepingCow {
                     cowNode.removeAllActions()
                     cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.sleepTextures, timePerFrame: 0.3)))
+                } else if animalType == .brownSleepingCow {
+                    cowNode.removeAllActions()
+                    cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.brownSleepTextures, timePerFrame: 0.28)))
                 } else if animalType == .sleepingPig {
                     cowNode.removeAllActions()
                     cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.pigRestTextures, timePerFrame: 0.25)))
@@ -695,6 +783,9 @@ class CowsGameScene: SKScene {
                 if animalType == .sleepingCow {
                     cowNode.removeAllActions()
                     cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.sleepTextures, timePerFrame: 0.3)))
+                } else if animalType == .brownSleepingCow {
+                    cowNode.removeAllActions()
+                    cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.brownSleepTextures, timePerFrame: 0.28)))
                 } else if animalType == .sleepingPig {
                     cowNode.removeAllActions()
                     cowNode.run(SKAction.repeatForever(SKAction.animate(with: self.pigRestTextures, timePerFrame: 0.25)))
