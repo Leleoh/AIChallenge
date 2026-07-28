@@ -190,6 +190,12 @@ struct CowsGameView: View {
             setupGameBridge()
             SoundService.shared.playBGM(named: "OST", volume: 0.18)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .startMoovniGame)) { _ in
+            startSeamlessGame()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .startPromptWaiterGame)) { _ in
+            startSeamlessGame()
+        }
     }
     
     // MARK: - Conexão ViewModel & SpriteKit Scene

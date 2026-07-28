@@ -6,9 +6,14 @@
 //
 
 import SwiftUI
+import AppIntents
 
 @main
 struct AIChallengeApp: App {
+    init() {
+        MOOVNIShortcuts.updateAppShortcutParameters()
+    }
+    
     var body: some Scene {
         WindowGroup {
             CowsGameMenuView(isPresented: .constant(true))
