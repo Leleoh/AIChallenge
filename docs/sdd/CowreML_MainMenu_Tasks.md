@@ -1,6 +1,6 @@
-# 📝 Plano de Tarefas (Tasks): Menu Inicial CowreML (Moo Liberation)
+# 📝 Plano de Tarefas (Tasks): Cena Única Contínua & Menu de Pausa
 
-> **Status:** Proposta (Fase 3 - Tasks v1.0)
+> **Status:** Aprovado (Fase 3 - Tasks v1.2)
 > **Data:** 27/07/2026
 > **Spec de Referência:** `docs/sdd/CowreML_MainMenu_Spec.md`
 
@@ -8,24 +8,21 @@
 
 ## Checklist de Implementação (Fase 4 - Execute)
 
-- [ ] **1. Criar `CowsMenuScene.swift` (SpriteKit Background)**:
-  - [ ] Montar cenário com céu, nuvens em paralaxe, relevo e pasto.
-  - [ ] Adicionar vacas malhada, marrom e dormindo se movimentando de forma decorativa.
-  - [ ] Adicionar OVNI decorativo flutuando suavemente no céu.
+- [ ] **1. Unificar o Estado da Cena (`CowsGameScene.swift`)**:
+  - [ ] Integrar nó do título **M.O.O.V.N.I.** e feixe decorativo diretamente em `CowsGameScene`.
+  - [ ] Criar métodos `transitionToGame()` e `transitionToMenu()` com animações suaves de `fadeIn`/`fadeOut`.
+  - [ ] Adicionar suporte ao estado `.paused` congelando a física e os timers (`isPaused = true`).
 
-- [ ] **2. Criar `GesturesGuideModalView.swift` (Modal Como Jogar)**:
-  - [ ] Criar modal pop-up com a explicação da pinça da mão (Thumb & Index tip).
-  - [ ] Renderizar os 6 gestos (Quadrado ⏹, Círculo ⏺, Triângulo ▲, V, Z, Infinito ∞) com ícones e nomes.
+- [ ] **2. Atualizar o ViewModel (`CowsGameViewModel.swift`)**:
+  - [ ] Adicionar suporte a `pauseGame()` e `resumeGame()`.
+  - [ ] Gerenciar alternância suave entre estados `.menu`, `.playing`, `.paused` e `.gameOver`.
 
-- [ ] **3. Criar `CowsGameMenuView.swift` (Interface Principal em SwiftUI)**:
-  - [ ] Integrar `CowsMenuScene` isolada via `Equatable` ao fundo.
-  - [ ] Renderizar Título 8-Bit **"CowreML: Moo Liberation"**.
-  - [ ] Criar botões **"JOGAR"** e **"COMO JOGAR"**.
-  - [ ] Exibir recorde de pontos via `@AppStorage("cowsHighScore")`.
-  - [ ] Apresentar `CowsGameView` via sheet/fullScreenCover ao clicar em "JOGAR".
+- [ ] **3. Implementar Menu de Pausa (`CowsGameView.swift`)**:
+  - [ ] Substituir o botão de sair direto por botão de Pausa **"⏸ Pausar"**.
+  - [ ] Criar overlay de Pausa com opções **"Continuar"** e **"Voltar ao Menu"**.
 
-- [ ] **4. Atualizar `HomeView.swift`**:
-  - [ ] Conectar o botão do menu principal à nova `CowsGameMenuView`.
+- [ ] **4. Simplificar `CowsGameMenuView.swift`**:
+  - [ ] Conectar diretamente a `CowsGameView` como container principal unificado da experiência M.O.O.V.N.I.
 
 - [ ] **5. Validação e QA**:
-  - [ ] Executar build via `xcodebuild` e validar usabilidade.
+  - [ ] Compilar com `xcodebuild` e testar a transição sem cortes e a pausa.

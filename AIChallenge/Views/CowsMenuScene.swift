@@ -15,6 +15,8 @@ class CowsMenuScene: SKScene {
     private var cow1Textures: [SKTexture] = []
     private var sleepTextures: [SKTexture] = []
     private var brownCowTextures: [SKTexture] = []
+    private var pigWalkTextures: [SKTexture] = []
+    private var pigRestTextures: [SKTexture] = []
     
     static let nativeSize = CGSize(width: 1512, height: 850)
     
@@ -28,7 +30,7 @@ class CowsMenuScene: SKScene {
         setupLayers()
         layoutScene()
         setupCloudParallax()
-        setupCows()
+        setupAnimals()
         setupDecorativeUFO()
     }
     
@@ -54,7 +56,26 @@ class CowsMenuScene: SKScene {
             return tex
         }
         
-        SKTexture.preload([ufoTexture] + cow1Textures + sleepTextures + brownCowTextures) {}
+        pigWalkTextures = (1...5).map {
+            let tex = SKTexture(imageNamed: "PorcoAndando\($0)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+        
+        pigRestTextures = (1...12).map {
+            let tex = SKTexture(imageNamed: "PorcoDeitado\($0)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+        
+        var allTex: [SKTexture] = [ufoTexture]
+        allTex.append(contentsOf: cow1Textures)
+        allTex.append(contentsOf: sleepTextures)
+        allTex.append(contentsOf: brownCowTextures)
+        allTex.append(contentsOf: pigWalkTextures)
+        allTex.append(contentsOf: pigRestTextures)
+        
+        SKTexture.preload(allTex) {}
     }
     
     private func setupLayers() {
@@ -104,35 +125,44 @@ class CowsMenuScene: SKScene {
         nuvensNode2.run(repeatAction)
     }
     
-    private func setupCows() {
+    private func setupAnimals() {
         // Vaca Malhada Caminhando
         if let firstTex = cow1Textures.first {
             let vaca1 = SKSpriteNode(texture: firstTex)
             vaca1.zPosition = 4
-            vaca1.position = CGPoint(x: -320, y: -250)
+            vaca1.position = CGPoint(x: -420, y: -250)
             vaca1.run(SKAction.repeatForever(SKAction.animate(with: cow1Textures, timePerFrame: 0.18)))
             vaca1.run(makeWalkSequence(distance: 260, duration: 11.0, node: vaca1))
             gameLayer.addChild(vaca1)
         }
         
-        // Vaca Dormindo no Centro
+        // Vaca Dormindo
         if let firstSleepTex = sleepTextures.first {
             let vaca2 = SKSpriteNode(texture: firstSleepTex)
             vaca2.zPosition = 4
-            vaca2.position = CGPoint(x: 20, y: -260)
+            vaca2.position = CGPoint(x: -120, y: -260)
             vaca2.run(SKAction.repeatForever(SKAction.animate(with: sleepTextures, timePerFrame: 0.3)))
             gameLayer.addChild(vaca2)
         }
         
-        // Vaca Marrom Caminhando
-        if let firstBrownTex = brownCowTextures.first {
-            let vaca3 = SKSpriteNode(texture: firstBrownTex)
-            vaca3.zPosition = 4
-            vaca3.position = CGPoint(x: 360, y: -250)
-            vaca3.xScale = -1.0
-            vaca3.run(SKAction.repeatForever(SKAction.animate(with: brownCowTextures, timePerFrame: 0.18)))
-            vaca3.run(makeWalkSequence(distance: -240, duration: 12.0, node: vaca3))
-            gameLayer.addChild(vaca3)
+        // Porco Deitado descansando no pasto
+        if let firstPigRest = pigRestTextures.first {
+            let porcoRest = SKSpriteNode(texture: firstPigRest)
+            porcoRest.zPosition = 4
+            porcoRest.position = CGPoint(x: 120, y: -265)
+            porcoRest.run(SKAction.repeatForever(SKAction.animate(with: pigRestTextures, timePerFrame: 0.25)))
+            gameLayer.addChild(porcoRest)
+        }
+        
+        // Porco Andando no pasto
+        if let firstPigWalk = pigWalkTextures.first {
+            let porcoWalk = SKSpriteNode(texture: firstPigWalk)
+            porcoWalk.zPosition = 4
+            porcoWalk.position = CGPoint(x: 380, y: -255)
+            porcoWalk.xScale = -1.0
+            porcoWalk.run(SKAction.repeatForever(SKAction.animate(with: pigWalkTextures, timePerFrame: 0.16)))
+            porcoWalk.run(makeWalkSequence(distance: -200, duration: 9.0, node: porcoWalk))
+            gameLayer.addChild(porcoWalk)
         }
     }
     
@@ -156,7 +186,6 @@ class CowsMenuScene: SKScene {
         decorativeUFO.setScale(0.85)
         decorativeUFO.position = CGPoint(x: 0, y: 230)
         
-        // Feixe Trator Decorativo Suave
         let beamPath = CGMutablePath()
         beamPath.move(to: CGPoint(x: -28, y: -15))
         beamPath.addLine(to: CGPoint(x: 28, y: -15))
@@ -171,7 +200,6 @@ class CowsMenuScene: SKScene {
         beamNode.zPosition = -1
         decorativeUFO.addChild(beamNode)
         
-        // Animação de Pulso do Feixe
         let pulseBeam = SKAction.repeatForever(SKAction.sequence([
             SKAction.group([
                 SKAction.scaleX(to: 1.08, duration: 1.2),
@@ -184,7 +212,6 @@ class CowsMenuScene: SKScene {
         ]))
         beamNode.run(pulseBeam)
         
-        // Animação de Flutuação e Oscilação do OVNI
         let hoverUp = SKAction.moveBy(x: 0, y: 16, duration: 2.0)
         hoverUp.timingMode = .easeInEaseOut
         let hoverDown = SKAction.moveBy(x: 0, y: -16, duration: 2.0)

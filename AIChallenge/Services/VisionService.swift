@@ -105,7 +105,12 @@ class VisionService: NSObject {
     }
     
     func stop() {
-        captureSession.stopRunning()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            if self.captureSession.isRunning {
+                self.captureSession.stopRunning()
+            }
+        }
     }
 }
 

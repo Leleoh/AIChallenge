@@ -11,7 +11,7 @@ import SwiftUI
 struct AIChallengeApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            CowsGameMenuView(isPresented: .constant(true))
         }
     }
 }

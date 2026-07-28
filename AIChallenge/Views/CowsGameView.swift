@@ -9,7 +9,6 @@ private struct IsolatedSpriteView: View, Equatable {
     let scene: CowsGameScene
     
     static func == (lhs: IsolatedSpriteView, rhs: IsolatedSpriteView) -> Bool {
-        // NUNCA re-avalia o SpriteView por mudanças de estado do SwiftUI (Hand tracking, HUD, etc)
         return true
     }
     
@@ -38,14 +37,17 @@ private struct IsolatedCameraView: View, Equatable {
 struct CowsGameView: View {
     @Binding var isPresented: Bool
     
+    @AppStorage("cowsHighScore") private var highScore: Int = 0
     @State private var viewModel: CowsGameViewModel
+    @State private var isGuidePresented: Bool = false
+    
     @State private var scene: CowsGameScene = {
         let newScene = CowsGameScene(size: CowsGameScene.nativeSize)
         newScene.scaleMode = .resizeFill
         return newScene
     }()
     
-    init(isPresented: Binding<Bool>) {
+    init(isPresented: Binding<Bool> = .constant(true)) {
         self._isPresented = isPresented
         let visionService = VisionService()
         self._viewModel = State(initialValue: CowsGameViewModel(visionService: visionService))
@@ -60,83 +62,90 @@ struct CowsGameView: View {
     
     var body: some View {
         ZStack {
-            // Layer 1: Feed da Câmera no fundo (Isolado do ciclo de diffing do SwiftUI)
+            // Layer 1: Feed da Câmera no fundo (Isolado)
             IsolatedCameraView(session: viewModel.visionService.captureSession)
             
-            // Layer 2: SpriteKit Game Scene (Isolado de re-avaliação do SwiftUI -> 60 FPS Fluidos)
+            // Layer 2: SpriteKit Game Scene Única & Contínua (Isolada de Re-avaliação)
             IsolatedSpriteView(scene: scene)
             
-            // Layer 3: Overlay do Traçado da Mão & Esqueleto
-            GeometryReader { geometry in
-                ZStack {
-                    if viewModel.drawingPathPoints.count > 1 {
-                        pathView(in: geometry.size)
-                    }
-                    
-                    ForEach(0..<viewModel.currentHandPoints.count, id: \.self) { index in
-                        let convertedPoint = convertNormalizedPoint(viewModel.currentHandPoints[index], in: geometry.size)
-                        Circle()
-                            .fill(Color.cyan.opacity(0.8))
-                            .frame(width: 10, height: 10)
-                            .position(convertedPoint)
-                    }
-                }
+            // Layer 3: Overlay da Interface de MENU (Quando em estado .ready)
+            if viewModel.gameState == .ready {
+                menuOverlayView
+                    .transition(.opacity)
             }
-            .ignoresSafeArea()
             
-            // Layer 4: HUD & Controles da UI Superior
-            VStack {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Button(action: {
-                            stopGame()
-                            isPresented = false
-                        }) {
-                            Label("Voltar ao Menu", systemImage: "arrow.left")
-                                .font(.headline)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(Color.black.opacity(0.7))
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
+            // Layer 4: Overlay do Traçado da Mão & Esqueleto (Durante o jogo)
+            if viewModel.gameState == .playing || viewModel.gameState == .paused {
+                GeometryReader { geometry in
+                    ZStack {
+                        if viewModel.drawingPathPoints.count > 1 {
+                            pathView(in: geometry.size)
                         }
-                        .buttonStyle(.plain)
                         
-                        livesHudView
-                    }
-                    
-                    Spacer()
-                    
-                    if let feedback = viewModel.feedbackMessage {
-                        Text(feedback)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(.yellow)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 10)
-                            .background(Color.black.opacity(0.85))
-                            .cornerRadius(12)
-                            .shadow(radius: 6)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                            .animation(.spring(), value: viewModel.feedbackMessage)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 8) {
-                        Text("Pontos: \(viewModel.score)")
-                            .font(.system(size: 26, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 4)
-                        
-                        debugHudView
+                        ForEach(0..<viewModel.currentHandPoints.count, id: \.self) { index in
+                            let convertedPoint = convertNormalizedPoint(viewModel.currentHandPoints[index], in: geometry.size)
+                            Circle()
+                                .fill(Color.cyan.opacity(0.8))
+                                .frame(width: 10, height: 10)
+                                .position(convertedPoint)
+                        }
                     }
                 }
-                .padding()
+                .ignoresSafeArea()
                 
-                Spacer()
+                // Layer 5: HUD Superior durante Gameplay
+                VStack {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Button(action: {
+                                viewModel.pauseGame()
+                            }) {
+                                Label("Pausar", systemImage: "pause.fill")
+                                    .font(.headline)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Color.black.opacity(0.7))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            livesHudView
+                        }
+                        
+                        Spacer()
+                        
+                        if let feedback = viewModel.feedbackMessage {
+                            Text(feedback)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.yellow)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 10)
+                                .background(Color.black.opacity(0.85))
+                                .cornerRadius(12)
+                                .shadow(radius: 6)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                                .animation(.spring(), value: viewModel.feedbackMessage)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 8) {
+                            Text("Pontos: \(viewModel.score)")
+                                .font(.system(size: 26, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: .black, radius: 4)
+                            
+                            debugHudView
+                        }
+                    }
+                    .padding()
+                    
+                    Spacer()
+                }
             }
             
-            // Layer 5: Overlay de Contagem Regressiva (3, 2, 1)
+            // Layer 6: Overlay de Contagem Regressiva (3, 2, 1)
             if let count = viewModel.countdownNumber {
                 ZStack {
                     Color.black.opacity(0.55)
@@ -160,17 +169,25 @@ struct CowsGameView: View {
                 }
             }
             
-            // Layer 6: Modal de Game Over
+            // Layer 7: Modal de Pausa
+            if viewModel.gameState == .paused {
+                pauseOverlayView
+            }
+            
+            // Layer 8: Modal de Game Over
             if viewModel.gameState == .gameOver {
                 gameOverOverlayView
+            }
+            
+            // Layer 9: Modal Guia de Gestos
+            if isGuidePresented {
+                GesturesGuideModalView(isPresented: $isGuidePresented)
+                    .transition(.opacity.combined(with: .scale))
+                    .animation(.spring(), value: isGuidePresented)
             }
         }
         .onAppear {
             setupGameBridge()
-            startGame()
-        }
-        .onDisappear {
-            stopGame()
         }
     }
     
@@ -187,16 +204,96 @@ struct CowsGameView: View {
         }
     }
     
-    private func startGame() {
+    private func startSeamlessGame() {
+        scene.hideMenuState()
         viewModel.startGame()
     }
     
-    private func stopGame() {
+    private func returnToSeamlessMenu() {
         scene.stopSpawningUFOs()
-        viewModel.stopGame()
+        scene.showMenuState()
+        viewModel.returnToMenu()
     }
     
-    // MARK: - Subviews de HUD & Debug
+    // MARK: - Subviews de UI
+    
+    private var menuOverlayView: some View {
+        VStack {
+            HStack {
+                Spacer()
+                if highScore > 0 {
+                    HStack(spacing: 6) {
+                        Text("🏆 Recorde:")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                        Text("\(highScore) pts")
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.yellow)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.75))
+                    .cornerRadius(12)
+                }
+            }
+            .padding()
+            
+            Spacer()
+            
+            // Título Principal M.O.O.V.N.I.
+            Text("M.O.O.V.N.I.")
+                .font(.system(size: 80, weight: .black, design: .rounded))
+                .foregroundColor(.yellow)
+                .shadow(color: .orange, radius: 16)
+                .shadow(color: .black, radius: 10)
+            
+            Spacer()
+            
+            // Controles Principais
+            VStack(spacing: 16) {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        startSeamlessGame()
+                    }
+                }) {
+                    Text("INICIAR RESGATE")
+                        .font(.title2)
+                        .bold()
+                        .frame(width: 280, height: 56)
+                        .background(
+                            LinearGradient(
+                                colors: [.green, .mint],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .foregroundColor(.white)
+                        .cornerRadius(16)
+                        .shadow(color: .green.opacity(0.5), radius: 10)
+                }
+                .buttonStyle(.plain)
+                
+                Button(action: {
+                    isGuidePresented = true
+                }) {
+                    Text("COMO JOGAR (GESTOS)")
+                        .font(.headline)
+                        .bold()
+                        .frame(width: 280, height: 48)
+                        .background(Color.black.opacity(0.75))
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.cyan.opacity(0.6), lineWidth: 1.5)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.bottom, 60)
+        }
+    }
     
     private var livesHudView: some View {
         HStack(spacing: 8) {
@@ -252,6 +349,53 @@ struct CowsGameView: View {
         .shadow(radius: 5)
     }
     
+    private var pauseOverlayView: some View {
+        ZStack {
+            Color.black.opacity(0.8)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 24) {
+                Text("JOGO PAUSADO ⏸")
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .foregroundColor(.yellow)
+                
+                VStack(spacing: 16) {
+                    Button(action: {
+                        viewModel.resumeGame()
+                    }) {
+                        Text("Continuar Resgate")
+                            .font(.title3)
+                            .bold()
+                            .frame(width: 240, height: 50)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            returnToSeamlessMenu()
+                        }
+                    }) {
+                        Text("Voltar ao Menu")
+                            .font(.title3)
+                            .bold()
+                            .frame(width: 240, height: 50)
+                            .background(Color.gray.opacity(0.6))
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(40)
+            .background(.ultraThinMaterial)
+            .cornerRadius(24)
+            .shadow(radius: 20)
+        }
+    }
+    
     private var gameOverOverlayView: some View {
         ZStack {
             Color.black.opacity(0.8)
@@ -263,7 +407,7 @@ struct CowsGameView: View {
                     .foregroundColor(.red)
                 
                 VStack(spacing: 8) {
-                    Text("Vacas Resgatadas (Pontuação)")
+                    Text("Animais Resgatados (Pontuação)")
                         .font(.headline)
                         .foregroundColor(.gray)
                     
@@ -274,7 +418,7 @@ struct CowsGameView: View {
                 
                 HStack(spacing: 20) {
                     Button(action: {
-                        viewModel.restartGame()
+                        startSeamlessGame()
                     }) {
                         Text("Jogar Novamente")
                             .font(.title3)
@@ -288,10 +432,11 @@ struct CowsGameView: View {
                     .buttonStyle(.plain)
                     
                     Button(action: {
-                        stopGame()
-                        isPresented = false
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            returnToSeamlessMenu()
+                        }
                     }) {
-                        Text("Menu Principal")
+                        Text("Voltar ao Menu")
                             .font(.title3)
                             .bold()
                             .padding(.horizontal, 24)

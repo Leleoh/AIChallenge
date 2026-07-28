@@ -1,53 +1,39 @@
-# 📱 Especificação da Funcionalidade: Tela de Menu Inicial (M.O.O.V.N.I.)
+# 📱 Especificação da Funcionalidade: Cena Única Contínua (Menu + Gameplay + Pausa)
 
-> **Status:** Aprovado (Fase 2 - Design v1.1)
+> **Status:** Aprovado (Fase 2 - Design v1.2)
 > **Data:** 27/07/2026
-> **Módulo:** Menu Principal / UI SwiftUI / SpriteKit Scene
+> **Módulo:** Menu Principal / Game Loop / SpriteKit / SwiftUI
 
 ---
 
 ## 1. Visão Geral (Overview)
-Criação da tela de Menu Inicial do jogo **M.O.O.V.N.I. (Moo-tion Operation & Vision Neural Interface)**. O menu combina uma cena SpriteKit animada ao fundo (cenário 8-Bit com vacas caminhando no pasto, nuvens em paralaxe e OVNI flutuando decorativamente) com uma interface SwiftUI limpa, moderna e responsiva na camada frontal.
+Evolução da arquitetura do jogo **M.O.O.V.N.I.** para utilizar uma **Cena Única Contínua em SpriteKit (`CowsGameScene`)**. Ao iniciar a partida, não há troca brusca de tela nem recriação de nós: o título e os botões esmaecem suavemente (`fadeOut`), a contagem regressiva (3... 2... 1...) é exibida sobre o cenário existente e o jogo começa com os animais na mesma posição. Adicionada também a funcionalidade de **Menu de Pausa**.
 
 ---
 
 ## 2. Requisitos (Requirements)
 
 - **O que deve ter:**
-  - **Título 8-Bit Destacado**: Exibição do título principal **"M.O.O.V.N.I."** com o subtítulo neon **"MOO-TION OPERATION & VISION INTERFACE"**.
-  - **Cenário de Fundo Animado (`CowsMenuScene`)**:
-    - Reuso dos assets Pixel Art existentes (`Ceu`, `Relevo`, `Pasto`, `NuvensBranca`).
-    - Nuvens deslizando em movimento paralaxe contínuo.
-    - Vacas caminhando pelo pasto e vaca dormindo no centro.
-    - OVNI decorativo flutuando no céu com feixe neon sutil.
-  - **Botão Principal "JOGAR"**:
-    - Inicia o Game Loop de abdução de vacas (`CowsGameView`).
-  - **Modal "COMO JOGAR" (Guia de Gestos)**:
-    - Exibe um modal pop-up visual mostrando os 6 gestos Mágicos CoreML (Quadrado ⏹, Círculo ⏺, Triângulo ▲, V, Z, Infinito ∞) e como usar a pinça da mão para desenhar.
-  - **Placar de Recorde (High Score)**:
-    - Exibição do recorde de vacas resgatadas via `@AppStorage("cowsHighScore")`.
-  - **Integração com `HomeView`**:
-    - Substituir a chamada direta em `HomeView.swift` para que a tela do menu **M.O.O.V.N.I.** seja a experiência inicial de abertura do jogo.
+  - **Cena Única Contínua (`CowsGameScene`)**:
+    - Gerencia os dois estados principais do jogo: `.menu` e `.playing` (além de `.paused` e `.gameOver`).
+    - No estado `.menu`, os animais caminham no pasto, nuvens rolam em paralaxe e o título **M.O.O.V.N.I.** fica visível.
+  - **Transição Suave (Sem Cortes ou Jumps)**:
+    - Ao clicar em **"INICIAR RESGATE"**, o título e os botões esmaecem (`fadeOut(0.5s)`).
+    - A contagem 3, 2, 1 aparece no centro da tela sobre o pasto contínuo.
+    - O spawner de OVNIs é ativado e a câmera inicia a detecção sem recriar a cena.
+  - **Botão de Pausa & Overlay de Pausa**:
+    - Durante o gameplay, o botão superior exibe **"Pausar"** (ou ícone ⏸).
+    - Ao pausar, a física e os timers do SpriteKit congelam (`scene.isPaused = true`).
+    - Overlay de Pausa exibindo as opções: **"Continuar"** e **"Voltar ao Menu"**.
+  - **Retorno Suave ao Menu**:
+    - Ao selecionar **"Voltar ao Menu"** no modal de pausa, as naves ativas decolam e o título **M.O.O.V.N.I.** reaparece suavemente (`fadeIn`), sem crash.
 
 ---
 
-## 3. Arquitetura e Componentes (Architecture & Components)
-
-```
-AIChallenge/
-  ├── Views/
-  │   ├── CowsGameMenuView.swift       # View SwiftUI da Interface de Menu
-  │   ├── CowsMenuScene.swift          # Scene SpriteKit do Fundo Animado
-  │   └── GesturesGuideModalView.swift # Modal Guia Visual de Gestos CoreML
-  └── ViewModels/
-      └── CowsGameViewModel.swift      # ViewModel existente
-```
-
----
-
-## 4. Histórico de Revisões (Changelog)
+## 3. Histórico de Revisões (Changelog)
 
 | Data | Versão | Autor | Descrição das Alterações |
 |---|---|---|---|
 | 27/07/2026 | 1.0 | Leonel / AI | Especificação inicial do Menu Principal CowreML. |
 | 27/07/2026 | 1.1 | Leonel / AI | Atualizado título oficial do jogo para M.O.O.V.N.I. |
+| 27/07/2026 | 1.2 | Leonel / AI | Especificação de Cena Única Contínua e Menu de Pausa. |

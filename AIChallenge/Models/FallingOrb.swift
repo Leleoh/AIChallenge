@@ -38,5 +38,6 @@ struct FallingOrb: Identifiable, Equatable {
 enum GameState {
     case ready
     case playing
+    case paused
     case gameOver
 }

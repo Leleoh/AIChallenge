@@ -82,6 +82,26 @@ class CowsGameViewModel {
         }
     }
     
+    func pauseGame() {
+        guard gameState == .playing else { return }
+        gameState = .paused
+    }
+    
+    func resumeGame() {
+        guard gameState == .paused else { return }
+        gameState = .playing
+    }
+    
+    func returnToMenu() {
+        gameState = .ready
+        countdownTimer?.invalidate()
+        countdownNumber = nil
+        observationBuffer.removeAll()
+        currentPinchBuffer.removeAll()
+        drawingPathPoints.removeAll()
+        currentHandPoints.removeAll()
+    }
+    
     func stopGame() {
         gameState = .gameOver
         countdownTimer?.invalidate()
