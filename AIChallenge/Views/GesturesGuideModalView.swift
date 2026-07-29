@@ -30,6 +30,11 @@ struct GesturesGuideModalView: View {
                         .multilineTextAlignment(.center)
                         .foregroundColor(.gray)
                         .padding(.horizontal)
+                    Text("Faça os desenhos com calma, você pode usar tanto a mão esquerda quanto a direita.")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.gray)
+                        .padding(.horizontal)
                 }
                 
                 // Grid de Gestos Suportados

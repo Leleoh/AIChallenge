@@ -309,7 +309,7 @@ class CowsGameViewModel {
             
             score += 100
             
-            let isPig = (target.cowIndex == 2 || target.cowIndex == 4)
+            let isPig = (target.cowIndex == 3 || target.cowIndex == 5)
             if isPig {
                 showFeedback("Porquinho Resgatado! 🐷 +100 pts")
             } else {
@@ -341,7 +341,7 @@ class CowsGameViewModel {
         
         lives = max(0, lives - 1)
         
-        let isPig = (target?.cowIndex == 2 || target?.cowIndex == 4)
+        let isPig = (target?.cowIndex == 3 || target?.cowIndex == 5)
         let animalName = isPig ? "Porquinho" : "Vaca"
         showFeedback("\(animalName) Abduzido(a)! 🛸 -1 Vida")
         

@@ -1,6 +1,6 @@
-# 📱 Especificação da Funcionalidade: Integracao com App Intents & Siri / Spotlight / Prompt Waiter
+# 📱 Especificação da Funcionalidade: Integração com App Intents & Siri / Spotlight / Prompt Waiter
 
-> **Status:** Aprovado (Fase 2 - Design v1.0)
+> **Status:** Aprovado (Fase 2 - Design v1.1)
 > **Data:** 28/07/2026
 > **Módulo:** AppIntents / Siri / Spotlight / Shortcuts / macOS
 
@@ -20,13 +20,7 @@ Implementação do framework nativo **App Intents** da Apple para o aplicativo *
   - *"Jogar M.O.O.V.N.I."*
 - **Comportamento**: Abre o aplicativo e inicia a partida imediatamente na contagem 3... 2... 1... JÁ!
 
-### Ação 2: `GetHighScoreIntent` (Consultar Recorde)
-- **Frases de Ativação**:
-  - *"Qual o meu recorde no M.O.O.V.N.I.?"*
-  - *"Pontuação máxima no M.O.O.V.N.I."*
-- **Comportamento**: Responde por texto/voz com a maior pontuação registrada em `@AppStorage("cowsHighScore")`.
-
-### Ação 3: `QuickBreakIntent` ("Prompt Waiter / Pausa da IA")
+### Ação 2: `QuickBreakIntent` ("Prompt Waiter / Pausa da IA")
 - **Frases de Ativação**:
   - *"Jogar enquanto a IA pensa no M.O.O.V.N.I."*
   - *"Pausa de prompt no M.O.O.V.N.I."*
@@ -40,3 +34,4 @@ Implementação do framework nativo **App Intents** da Apple para o aplicativo *
 | Data | Versão | Autor | Descrição das Alterações |
 |---|---|---|---|
 | 28/07/2026 | 1.0 | Leonel / AI | Especificação inicial de App Intents, Siri, Spotlight e Prompt Waiter. |
+| 28/07/2026 | 1.1 | Leonel / AI | Simplificação para focar nos 2 Intents de inicialização imediata. |
