@@ -137,7 +137,9 @@ struct CowsGameView: View {
                                 .foregroundColor(.white)
                                 .shadow(color: .black, radius: 4)
                             
-                            debugHudView
+                            // 💡 DEBUG: Painel de Predição de Gestos da IA (Desativado para a versão final)
+                            // Para reativar durante testes/debug, basta descomentar a linha abaixo:
+                            // debugHudView
                         }
                     }
                     .padding()

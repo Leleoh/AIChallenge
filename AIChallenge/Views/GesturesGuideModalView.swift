@@ -4,13 +4,21 @@ import SwiftUI
 struct GesturesGuideModalView: View {
     @Binding var isPresented: Bool
     
-    private let gestures: [(name: String, symbol: String, color: Color, desc: String)] = [
-        ("Quadrado", "⏹", .cyan, "Desenhe 4 lados retos"),
-        ("Círculo", "⏺", .purple, "Desenhe uma volta redonda"),
-        ("Triângulo", "▲", .orange, "Desenhe um triângulo com 3 pontas"),
-        ("Letra V", "V", .green, "Faça um movimento rápido em V"),
-        ("Letra Z", "Z", .yellow, "Desenhe um Z no ar"),
-        ("Infinito", "∞", .pink, "Desenhe um laço em 8 deitado")
+    private struct GestureGuideItem {
+        let name: String
+        let systemImageName: String?
+        let textSymbol: String?
+        let color: Color
+        let desc: String
+    }
+    
+    private let gestures: [GestureGuideItem] = [
+        GestureGuideItem(name: "Quadrado", systemImageName: "square", textSymbol: nil, color: .cyan, desc: "Desenhe 4 lados retos"),
+        GestureGuideItem(name: "Círculo", systemImageName: "circle", textSymbol: nil, color: .purple, desc: "Desenhe uma volta redonda"),
+        GestureGuideItem(name: "Triângulo", systemImageName: "triangle", textSymbol: nil, color: .orange, desc: "Desenhe um triângulo com 3 pontas"),
+        GestureGuideItem(name: "Letra V", systemImageName: nil, textSymbol: "V", color: .green, desc: "Faça um movimento rápido em V"),
+        GestureGuideItem(name: "Letra Z", systemImageName: nil, textSymbol: "Z", color: .yellow, desc: "Desenhe um Z no ar"),
+        GestureGuideItem(name: "Infinito", systemImageName: "infinity", textSymbol: nil, color: .pink, desc: "Desenhe um laço em 8 deitado")
     ]
     
     var body: some View {
@@ -41,12 +49,19 @@ struct GesturesGuideModalView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: 16) {
                     ForEach(gestures, id: \.name) { item in
                         HStack(spacing: 14) {
-                            Text(item.symbol)
-                                .font(.system(size: 36, weight: .bold))
-                                .foregroundColor(item.color)
-                                .frame(width: 50, height: 50)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(12)
+                            Group {
+                                if let systemName = item.systemImageName {
+                                    Image(systemName: systemName)
+                                        .font(.system(size: 24, weight: .black))
+                                } else if let text = item.textSymbol {
+                                    Text(text)
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                }
+                            }
+                            .foregroundColor(item.color)
+                            .frame(width: 50, height: 50)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.name)
@@ -64,7 +79,7 @@ struct GesturesGuideModalView: View {
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(item.color.opacity(0.4), lineWidth: 1.5)
+                                .stroke(item.color.opacity(0.5), lineWidth: 1.5)
                         )
                     }
                 }

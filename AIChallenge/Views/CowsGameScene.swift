@@ -661,22 +661,56 @@ class CowsGameScene: SKScene {
         
         ufoNode.run(SKAction.group([hoverAction, tiltAction]), withKey: "ufoHoverAndTilt")
         
+        let details = gestureDetails(for: target.gestureRequired)
+        
         let badgeContainer = SKNode()
         badgeContainer.position = CGPoint(x: 0, y: 75)
         
         let bgShape = SKShapeNode(circleOfRadius: 28)
-        bgShape.fillColor = SKColor.black.withAlphaComponent(0.75)
-        bgShape.strokeColor = SKColor.cyan
+        bgShape.fillColor = SKColor.black.withAlphaComponent(0.85)
+        bgShape.strokeColor = details.color
         bgShape.lineWidth = 2.5
         badgeContainer.addChild(bgShape)
         
-        let labelNode = SKLabelNode(text: gestureSymbol(for: target.gestureRequired))
-        labelNode.fontName = "AvenirNext-Bold"
-        labelNode.fontSize = 24
-        labelNode.fontColor = .white
-        labelNode.verticalAlignmentMode = .center
-        labelNode.horizontalAlignmentMode = .center
-        badgeContainer.addChild(labelNode)
+        switch target.gestureRequired {
+        case .square:
+            let shape = SKShapeNode(rectOf: CGSize(width: 22, height: 22), cornerRadius: 4)
+            shape.fillColor = .clear
+            shape.strokeColor = details.color
+            shape.lineWidth = 3.5
+            shape.position = .zero
+            badgeContainer.addChild(shape)
+            
+        case .circle:
+            let shape = SKShapeNode(circleOfRadius: 11)
+            shape.fillColor = .clear
+            shape.strokeColor = details.color
+            shape.lineWidth = 3.5
+            shape.position = .zero
+            badgeContainer.addChild(shape)
+            
+        case .triangle:
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: 0, y: 11))
+            path.addLine(to: CGPoint(x: -11, y: -9))
+            path.addLine(to: CGPoint(x: 11, y: -9))
+            path.closeSubpath()
+            let shape = SKShapeNode(path: path)
+            shape.fillColor = .clear
+            shape.strokeColor = details.color
+            shape.lineWidth = 3.5
+            shape.position = .zero
+            badgeContainer.addChild(shape)
+            
+        case .lineV, .lineZ, .infinite:
+            let labelNode = SKLabelNode(text: details.symbol)
+            labelNode.fontName = "AvenirNext-Bold"
+            labelNode.fontSize = 25
+            labelNode.fontColor = details.color
+            labelNode.verticalAlignmentMode = .center
+            labelNode.horizontalAlignmentMode = .center
+            badgeContainer.addChild(labelNode)
+        }
         
         ufoNode.addChild(badgeContainer)
         gameLayer.addChild(ufoNode)
@@ -709,14 +743,20 @@ class CowsGameScene: SKScene {
         activeNodesMap[target.id] = group
     }
     
-    private func gestureSymbol(for gesture: GestureType) -> String {
+    private func gestureDetails(for gesture: GestureType) -> (symbol: String, color: SKColor) {
         switch gesture {
-        case .square: return "⏹"
-        case .circle: return "⏺"
-        case .triangle: return "▲"
-        case .lineV: return "V"
-        case .lineZ: return "Z"
-        case .infinite: return "∞"
+        case .square:
+            return ("◻", SKColor(red: 0.0, green: 0.9, blue: 1.0, alpha: 1.0))
+        case .circle:
+            return ("◯", SKColor(red: 0.88, green: 0.25, blue: 0.98, alpha: 1.0))
+        case .triangle:
+            return ("△", SKColor(red: 1.0, green: 0.57, blue: 0.0, alpha: 1.0))
+        case .lineV:
+            return ("V", SKColor(red: 0.0, green: 0.9, blue: 0.46, alpha: 1.0))
+        case .lineZ:
+            return ("Z", SKColor(red: 1.0, green: 0.92, blue: 0.0, alpha: 1.0))
+        case .infinite:
+            return ("∞", SKColor(red: 1.0, green: 0.09, blue: 0.27, alpha: 1.0))
         }
     }
     
