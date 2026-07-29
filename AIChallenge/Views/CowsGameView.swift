@@ -38,6 +38,7 @@ struct CowsGameView: View {
     @Binding var isPresented: Bool
     
     @AppStorage("cowsHighScore") private var highScore: Int = 0
+    @StateObject private var soundService = SoundService.shared
     @State private var viewModel: CowsGameViewModel
     @State private var isGuidePresented: Bool = false
     
@@ -224,9 +225,57 @@ struct CowsGameView: View {
     
     // MARK: - Subviews de UI
     
+    private var soundControlButtonsView: some View {
+        HStack(spacing: 10) {
+            Button(action: {
+                soundService.isMusicEnabled.toggle()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: soundService.isMusicEnabled ? "music.note" : "speaker.slash.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(soundService.isMusicEnabled ? "Música ON" : "Música OFF")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(soundService.isMusicEnabled ? Color.purple.opacity(0.8) : Color.black.opacity(0.75))
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            
+            Button(action: {
+                soundService.isSFXEnabled.toggle()
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: soundService.isSFXEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(soundService.isSFXEnabled ? "Som ON" : "Som OFF")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(soundService.isSFXEnabled ? Color.blue.opacity(0.8) : Color.black.opacity(0.75))
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
     private var menuOverlayView: some View {
         VStack {
             HStack {
+                soundControlButtonsView
+                
                 Spacer()
                 if highScore > 0 {
                     HStack(spacing: 6) {
@@ -365,6 +414,8 @@ struct CowsGameView: View {
                 Text("JOGO PAUSADO ⏸")
                     .font(.system(size: 38, weight: .black, design: .rounded))
                     .foregroundColor(.yellow)
+                
+                soundControlButtonsView
                 
                 VStack(spacing: 16) {
                     Button(action: {
