@@ -116,22 +116,24 @@ class VisionService: NSObject {
 
 extension VisionService: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
-        do {
-            try handler.perform([handPoseRequest])
+        autoreleasepool {
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
             
-            guard let observation = handPoseRequest.results?.first else {
-                DispatchQueue.main.async { [weak self] in
-                    self?.onHandLost?()
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            do {
+                try handler.perform([handPoseRequest])
+                
+                guard let observation = handPoseRequest.results?.first else {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onHandLost?()
+                    }
+                    return
                 }
-                return // Nenhuma mão detectada
+                
+                processObservation(observation)
+            } catch {
+                print("Erro ao processar VNHumanHandPoseRequest: \(error)")
             }
-            
-            processObservation(observation)
-        } catch {
-            print("Erro ao processar VNHumanHandPoseRequest: \(error)")
         }
     }
     

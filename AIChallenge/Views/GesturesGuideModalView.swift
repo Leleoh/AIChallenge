@@ -28,18 +28,19 @@ struct GesturesGuideModalView: View {
             
             VStack(spacing: 24) {
                 // Cabeçalho
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     Text("🛸 COMO JOGAR 🛸")
-                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .font(.system(size: 34, weight: .black, design: .rounded))
                         .foregroundColor(.yellow)
                     
                     Text("Junte o Polegar e o Indicador 👌 e desenhe o gesto no ar para desligar o feixe do OVNI!")
-                        .font(.subheadline)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                         .padding(.horizontal)
+                    
                     Text("Faça os desenhos com calma, você pode usar tanto a mão esquerda quanto a direita.")
-                        .font(.subheadline)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .multilineTextAlignment(.center)
                         .foregroundColor(.gray)
                         .padding(.horizontal)

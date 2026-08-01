@@ -318,7 +318,7 @@ struct CowsGameView: View {
                     Text("INICIAR RESGATE")
                         .font(.title2)
                         .bold()
-                        .frame(width: 280, height: 56)
+                        .frame(width: 280, height: 54)
                         .background(
                             LinearGradient(
                                 colors: [.green, .mint],
@@ -338,12 +338,12 @@ struct CowsGameView: View {
                     Text("COMO JOGAR (GESTOS)")
                         .font(.headline)
                         .bold()
-                        .frame(width: 280, height: 48)
+                        .frame(width: 280, height: 54)
                         .background(Color.black.opacity(0.75))
                         .foregroundColor(.white)
-                        .cornerRadius(14)
+                        .cornerRadius(16)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.cyan.opacity(0.6), lineWidth: 1.5)
                         )
                 }
@@ -478,20 +478,6 @@ struct CowsGameView: View {
                 
                 HStack(spacing: 20) {
                     Button(action: {
-                        startSeamlessGame()
-                    }) {
-                        Text("Jogar Novamente")
-                            .font(.title3)
-                            .bold()
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button(action: {
                         withAnimation(.easeInOut(duration: 0.4)) {
                             returnToSeamlessMenu()
                         }
@@ -502,6 +488,20 @@ struct CowsGameView: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
                             .background(Color.gray.opacity(0.6))
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(action: {
+                        startSeamlessGame()
+                    }) {
+                        Text("Jogar Novamente")
+                            .font(.title3)
+                            .bold()
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                     }

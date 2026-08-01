@@ -276,21 +276,23 @@ class CowsGameViewModel {
             guard let self = self else { return }
             defer { self.isAnalyzing = false }
             
-            do {
-                if let result = try self.coreMLService.predict(observations: buffer) {
-                    DispatchQueue.main.async {
-                        self.lastDetectedGesture = result
-                        self.allProbabilities = result.allProbabilities
-                        
-                        let requiredThreshold = self.thresholdForGesture(result.label)
-                        
-                        if result.confidence >= requiredThreshold {
-                            self.handleGestureRecognized(result)
+            autoreleasepool {
+                do {
+                    if let result = try self.coreMLService.predict(observations: buffer) {
+                        DispatchQueue.main.async {
+                            self.lastDetectedGesture = result
+                            self.allProbabilities = result.allProbabilities
+                            
+                            let requiredThreshold = self.thresholdForGesture(result.label)
+                            
+                            if result.confidence >= requiredThreshold {
+                                self.handleGestureRecognized(result)
+                            }
                         }
                     }
+                } catch {
+                    print("Erro no CoreML predict: \(error)")
                 }
-            } catch {
-                print("Erro no CoreML predict: \(error)")
             }
         }
     }
