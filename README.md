@@ -1,34 +1,107 @@
-# 🎈 Magic Therapy (AI Challenge)
+# 🛸 M.O.O.V.N.I. — Alien Cow Rescue Game
 
-**Magic Therapy** é um aplicativo macOS gamificado focado em ML. O projeto utiliza a câmera do dispositivo em conjunto com Inteligência Artificial para rastrear movimentos e gestos das mãos no ar, permitindo que os usuários interajam com elementos virtuais (como estourar balões e desenhar formas) de maneira divertida. No futuro pretende-se expandir para uso fisioterapeutico.
+[![macOS](https://img.shields.io/badge/macOS-13.0%2B-blue.svg)](https://developer.apple.com/macos/)
+[![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
+[![CoreML](https://img.shields.io/badge/CoreML-Spatial%20ML-green.svg)](https://developer.apple.com/documentation/coreml)
+[![Vision](https://img.shields.io/badge/Vision-Hand%20Pose-purple.svg)](https://developer.apple.com/documentation/vision)
+[![SpriteKit](https://img.shields.io/badge/SpriteKit-2D%20Engine-brightgreen.svg)](https://developer.apple.com/documentation/spritekit)
+
+> **M.O.O.V.N.I.** é um jogo arcade retrô *hands-free* desenvolvido nativamente para macOS. O aplicativo combina **Visão Computacional em tempo real** e **Machine Learning (Core ML)** para permitir que o jogador resgate vacas e porquinhos prestes a serem abduzidos por naves alienígenas — tudo desenhando gestos espaciais com os dedos no ar, sem tocar no teclado ou mouse!
+
+---
+
+## 🎮 Como Funciona o Jogo
+
+Um OVNI alienígena sobrevoa um pasto 2D dinâmico e projeta seu feixe de abdução sobre os animais da fazenda (vacas malhadas, vacas marrons e porquinhos). 
+
+Cada nave exibe o **símbolo do gesto espacial** necessário para desligar seu feixe trator. O jogador deve:
+1. **Juntar o polegar e o indicador (gesto de pinça 👌)** para ativar a caneta espacial virtual.
+2. **Desenhar o gesto correspondente no ar** com a mão (esquerda ou direita).
+3. Ao reconhecer o gesto com alta precisão, o feixe do OVNI se apaga e o animal cai em segurança no pasto, somando **+100 pontos**!
+
+---
+
+## ✍️ Gestos Suportados pela IA
+
+O modelo próprio treinado via **Create ML** reconhece 6 gestos espaciais em uma janela deslizante (*Sliding Window*) de 60 quadros:
+
+| Gesto | Símbolo | Cor do Feixe / Badge | Descrição |
+| :--- | :---: | :---: | :--- |
+| **Quadrado** | `◻` | Cyan `#00E5FF` | Desenhe 4 lados retos no ar |
+| **Círculo** | `◯` | Magenta `#E040FB` | Desenhe uma volta redonda |
+| **Triângulo** | `△` | Laranja `#FF9100` | Desenhe um triângulo com 3 pontas |
+| **Letra V** | `V` | Verde `#00E676` | Movimento rápido em V |
+| **Letra Z** | `Z` | Amarelo `#FFD600` | Desenhe um Z contínuo no ar |
+| **Infinito** | `∞` | Rosa `#FF1744` | Desenhe um laço em 8 deitado |
 
 ---
 
 ## 🌟 Principais Funcionalidades
 
-- **Rastreamento de Mãos em Tempo Real:** Utiliza a câmera do Mac e o framework `Vision` para mapear os pontos anatômicos das mãos (`VNHumanHandPoseObservation`) com alta precisão e sem necessidade de sensores externos (como luvas ou controles).
-- **Reconhecimento de Trajetórias (CoreML):** Integração avançada com **CoreML** rodando em uma janela de análise contínua (*Sliding Window* de 60 frames) para prever e entender formas desenhadas no ar pelo usuário.
-- **Gamificação Fisioterápica:** Sistema de *spawn* de alvos (balões) baseados em gestos específicos, gerando engajamento e transformando exercícios monótonos em um jogo.
-- **Alta Performance:** Processamento de câmera em tempo real (`AVFoundation`) com injeção direta de memória e ponteiros (`Float32`) no pipeline de Machine Learning, garantindo análise fluida e preditiva.
+- 👁️ **Visão Computacional a 30 FPS (`Vision` Framework):** Mapeamento em tempo real dos 21 pontos anatômicos da mão (`VNHumanHandPoseObservation`) via câmera do Mac ou Câmera de Continuidade (iPhone).
+- 🧠 **Inferência Core ML em Tempo Real:** Modelo `HandGestureClassifier.mlmodel` com pré-processamento de *sliding window*, limiares dinâmicos de confiança e desacoplamento de concorrência (`autoreleasepool`).
+- 🎮 **SpriteKit 2D Engine:** Pasto interativo de 60 FPS com animações em pixel art, máquina de estados para animais (caminhar, parar, dormir), feixe pulsante com partículas e efeito parallax.
+- 🎙️ **Integração com Siri & App Intents:** Suporte a atalhos nativos do macOS (`AppShortcutsProvider`). Diga *"E aí Siri, iniciar resgate no MOOVNI"* para entrar direto no jogo.
+- ⏸️ **Modo "Prompt Waiter":** Recurso de pausa rápida desenhado para quem está aguardando o processamento de respostas longas em IAs (como ChatGPT/Claude). Permite jogar uma partida de 1 a 3 minutos enquanto a IA responde!
+- 🎵 **Trilha & Efeitos Chiptune:** Músicas e sons retrô 8-bit com controles independentes de áudio e salvamento automático em `UserDefaults`.
+- 🔒 **Privacidade 100% On-Device:** Nenhuma imagem da câmera é gravada ou enviada para a internet. Todo o processamento ocorre exclusivamente dentro da memória do Mac.
 
-## Tecnologias e Arquitetura
+---
 
-O projeto foi construído seguindo padrões arquiteturais modernos do ecossistema Apple e impulsionado por uma abordagem **Spec-Driven Development (SDD)**.
+## 🏗️ Arquitetura & Tecnologias
 
-- **Linguagem:** Swift 5.9+
-- **UI Framework:** SwiftUI
-- **Arquitetura:** MVVM (Model-View-ViewModel) + Service Pattern
-- **Gerenciamento de Estado:** Macro `@Observable`
-- **Machine Learning & Visão Computacional:** `CoreML`, `Vision`, `AVFoundation`
+O projeto adota a arquitetura **MVVM (Model-View-ViewModel)** com **Service Pattern** e segue a metodologia **Spec-Driven Development (SDD)**:
+
+```
+AIChallenge/
+├── AIChallengeApp.swift            # Ponto de entrada e manipulador de App Intents
+├── Models/                         # Modelos de dados (GestureType, GameState, AbductionTarget)
+├── Services/
+│   ├── VisionService.swift         # Captura de câmera AVFoundation + Vision Hand Pose
+│   ├── CoreMLService.swift         # Pipeline de inferência com HandGestureClassifier
+│   └── SoundService.swift          # Gerenciamento de áudio BGM e SFX
+├── ViewModels/
+│   └── CowsGameViewModel.swift     # Regras de negócio, pontuação, timers e estado
+├── Views/
+│   ├── CowsGameView.swift          # Overlay SwiftUI, HUD de pontuação e modais
+│   ├── CowsGameScene.swift         # Cena 2D SpriteKit (pasto, vacas, naves e animações)
+│   ├── CowsMenuScene.swift         # Menu inicial interativo em SpriteKit
+│   └── GesturesGuideModalView.swift# Modal explicativo de gestos
+└── Intents/
+    └── MOOVNIIntents.swift         # AppIntents para Siri e Atalhos do macOS
+```
 
 ### Spec-Driven Development (SDD)
-Este repositório atua como um laboratório prático para o SDD. Antes de qualquer linha de código ser escrita, as funcionalidades são rigorosamente documentadas na pasta `docs/sdd/`. Estas especificações em formato Markdown atuam como a "Fonte da Verdade" (Source of Truth) do projeto. Assistentes de IA são então guiados (usando o fluxo customizado na pasta `.agents/`) para codificar e refatorar a arquitetura seguindo estritamente estes contratos.
+Todas as especificações técnicas, modelos de dados e planos de execução estão documentados na pasta `docs/sdd/`:
+- [`SpriteKit_CowsGame_Spec.md`](docs/sdd/SpriteKit_CowsGame_Spec.md): Especificação completa do pasto e motor 2D.
+- [`AppIntents_MOOVNI_Spec.md`](docs/sdd/AppIntents_MOOVNI_Spec.md): Integração com Siri e comandos de voz.
+- [`AudioSettings_Spec.md`](docs/sdd/AudioSettings_Spec.md): Especificação do sistema de som.
+- [`VisualRefinements_Spec.md`](docs/sdd/VisualRefinements_Spec.md): Guia de UX e refinamentos visuais.
 
-## Como Executar o Projeto
+---
 
-1. Clone este repositório.
-2. Abra o arquivo `AIChallenge.xcodeproj` no **Xcode** (requer Xcode 15 ou superior).
-3. Selecione o seu Mac como target (macOS).
-4. Rode o projeto (`Cmd + R`). O macOS solicitará a permissão de acesso à **Câmera** na primeira execução.
-5. Para focar nos testes de ML, navegue pelo app até a tela de Sandbox (se disponível) para testar os desenhos no ar em tempo real.
+## 🚀 Como Executar o Projeto
 
+1. **Requisitos:**
+   - Mac com **macOS 13.0 (Ventura)** ou superior (suporta chips Apple Silicon M1/M2/M3/M4 e Intel).
+   - **Xcode 15.0** ou superior.
+   - Câmera integrada do Mac ativa ou Câmera de Continuidade com iPhone.
+
+2. **Passos:**
+   ```bash
+   git clone https://github.com/Leleoh/AIChallenge.git
+   cd AIChallenge
+   open AIChallenge.xcodeproj
+   ```
+3. No Xcode, selecione o target **My Mac** e pressione `Cmd + R` para compilar e rodar.
+4. Na primeira execução, autorize o acesso à **Câmera** quando solicitado.
+5. No menu principal, clique em **COMO JOGAR** para ver os gestos ou clique em **INICIAR RESGATE** para começar a jogar!
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido com ❤️ por **Leonel Ferraz Hernandez**  
+- 🎓 Estudante de Engenharia de Computação (UFRGS) & Desenvolvedor iOS na Apple Developer Academy.
+- 🔗 Portfolio: [Leleoh.github.io](https://leleoh.github.io)
+- ✉️ Contato: `leonelfhernandez@icloud.com`
