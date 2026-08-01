@@ -101,7 +101,6 @@ Todas as especificações técnicas, modelos de dados e planos de execução est
 
 ## 👨‍💻 Autor
 
-Desenvolvido com ❤️ por **Leonel Ferraz Hernandez**  
+Desenvolvido por **Leonel Ferraz Hernandez**  
 - 🎓 Estudante de Engenharia de Computação (UFRGS) & Desenvolvedor iOS na Apple Developer Academy.
-- 🔗 Portfolio: [Leleoh.github.io](https://leleoh.github.io)
-- ✉️ Contato: `leonelfhernandez@icloud.com`
+- 🔗 Portfolio: [Leleoh.github.io](https://leonelhernandez.com.br)
